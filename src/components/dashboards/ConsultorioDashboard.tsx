@@ -1,21 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Calendar, 
-  FileText, 
-  Stethoscope, 
-  Clock,
-  User,
-  Heart,
-  Thermometer,
-  Activity,
-  Pill,
-  TestTube,
-  Save,
-  Eye,
-  Edit,
-  Plus
-} from 'lucide-react';
+import { Users, Calendar, FileText, Stethoscope, Clock, User, Heart, Thermometer, Activity, Pill, TestTube, Save, Eye, CreditCard as Edit, Plus } from 'lucide-react';
 
 interface Patient {
   _id: string;

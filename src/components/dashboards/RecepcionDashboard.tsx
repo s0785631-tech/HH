@@ -1,18 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Calendar, 
-  Users, 
-  Clock, 
-  Phone, 
-  UserPlus, 
-  Search,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Edit,
-  Eye,
-  Plus
-} from 'lucide-react';
+import { Calendar, Users, Clock, Phone, UserPlus, Search, CheckCircle, XCircle, AlertCircle, CreditCard as Edit, Eye, Plus } from 'lucide-react';
 
 interface Patient {
   _id: string;
