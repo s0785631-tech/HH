@@ -13,6 +13,9 @@ function App() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('hasShownWelcome');
     setUserRole(null);
   };
 

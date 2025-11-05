@@ -14,7 +14,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
-  const [isFirstLogin, setIsFirstLogin] = useState(true);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,10 +36,12 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         const data = await response.json();
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        if (isFirstLogin) {
+
+        const hasShownWelcome = sessionStorage.getItem('hasShownWelcome');
+        if (!hasShownWelcome) {
           setShowSuccessToast(true);
+          sessionStorage.setItem('hasShownWelcome', 'true');
           setTimeout(() => {
-            setIsFirstLogin(false);
             setShowSuccessToast(false);
             onLogin(data.user.role);
           }, 5300);
@@ -62,10 +63,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       const user = mockUsers.find(u => u.documentNumber === documentNumber);
       if (user) {
-        if (isFirstLogin) {
+        const hasShownWelcome = sessionStorage.getItem('hasShownWelcome');
+        if (!hasShownWelcome) {
           setShowSuccessToast(true);
+          sessionStorage.setItem('hasShownWelcome', 'true');
           setTimeout(() => {
-            setIsFirstLogin(false);
             setShowSuccessToast(false);
             onLogin(user.role);
           }, 5300);
@@ -82,10 +84,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   const quickLogin = (role: string, docNumber: string) => {
     setDocumentNumber(docNumber);
-    if (isFirstLogin) {
+    const hasShownWelcome = sessionStorage.getItem('hasShownWelcome');
+    if (!hasShownWelcome) {
       setShowSuccessToast(true);
+      sessionStorage.setItem('hasShownWelcome', 'true');
       setTimeout(() => {
-        setIsFirstLogin(false);
         setShowSuccessToast(false);
         onLogin(role);
       }, 5300);
