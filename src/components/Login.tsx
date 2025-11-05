@@ -91,7 +91,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       setTimeout(() => {
         setShowSuccessToast(false);
         onLogin(role);
-      }, 7000);
+      }, 1000);
     } else {
       onLogin(role);
     }
