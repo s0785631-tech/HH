@@ -39,7 +39,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         setShowSuccessToast(true);
         setTimeout(() => {
           onLogin(data.user.role);
-        }, 1500);
+        }, 5300);
       } else {
         const errorData = await response.json();
         setShowErrorModal(true);
@@ -58,7 +58,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         setShowSuccessToast(true);
         setTimeout(() => {
           onLogin(user.role);
-        }, 1500);
+        }, 5300);
       } else {
         setShowErrorModal(true);
       }
@@ -72,7 +72,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setShowSuccessToast(true);
     setTimeout(() => {
       onLogin(role);
-    }, 1500);
+    }, 5300);
   };
 
   return (
