@@ -78,7 +78,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           // Oculta el toast después del tiempo
           setTimeout(() => {
             setShowSuccessToast(false);
-          }, 3500);
+          }, 7000);
         } else {
           onLogin(user.role);
         }
