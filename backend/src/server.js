@@ -8,6 +8,7 @@ const appointmentRoutes = require('./routes/appointments');
 const triageRoutes = require('./routes/triage');
 const consultationRoutes = require('./routes/consultations');
 const dashboardRoutes = require('./routes/dashboard');
+const doctorRoutes = require('./routes/doctors');
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/triage', triageRoutes);
 app.use('/api/consultations', consultationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/doctors', doctorRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
