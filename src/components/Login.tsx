@@ -81,14 +81,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-6xl flex items-center justify-between">
           {/* Left Side - Branding */}
-          <div className="flex-1 pr-200">
+          <div className="flex-1 pr-16">
             {/* Logo */}
             <div className="mb-12">
               <div className="flex items-center space-x-3 mb-8">
                 <img 
                   src="/SAVISER copy.png" 
                   alt="SAVISER - Salud con calidad al servicio de todos" 
-                  className="h-24 w-auto"
+                  className="h-48 w-auto"
                 />
               </div>
               
