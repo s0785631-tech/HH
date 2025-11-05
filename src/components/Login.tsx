@@ -14,6 +14,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [isFirstLogin, setIsFirstLogin] = useState(true);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,10 +37,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         const data = await response.json();
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        setShowSuccessToast(true);
-        setTimeout(() => {
+        if (isFirstLogin) {
+          setShowSuccessToast(true);
+          setTimeout(() => {
+            onLogin(data.user.role);
+            setIsFirstLogin(false);
+          }, 5300);
+        } else {
           onLogin(data.user.role);
-        }, 5300);
+        }
       } else {
         const errorData = await response.json();
         setShowErrorModal(true);
@@ -55,10 +61,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       const user = mockUsers.find(u => u.documentNumber === documentNumber);
       if (user) {
-        setShowSuccessToast(true);
-        setTimeout(() => {
+        if (isFirstLogin) {
+          setShowSuccessToast(true);
+          setTimeout(() => {
+            onLogin(user.role);
+            setIsFirstLogin(false);
+          }, 5300);
+        } else {
           onLogin(user.role);
-        }, 5300);
+        }
       } else {
         setShowErrorModal(true);
       }
@@ -69,10 +80,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   const quickLogin = (role: string, docNumber: string) => {
     setDocumentNumber(docNumber);
-    setShowSuccessToast(true);
-    setTimeout(() => {
+    if (isFirstLogin) {
+      setShowSuccessToast(true);
+      setTimeout(() => {
+        onLogin(role);
+        setIsFirstLogin(false);
+      }, 5300);
+    } else {
       onLogin(role);
-    }, 5300);
+    }
   };
 
   return (
