@@ -88,7 +88,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 <img 
                   src="/SAVISER copy.png" 
                   alt="SAVISER - Salud con calidad al servicio de todos" 
-                  className="h-48 w-auto"
+                  className="h-70 w-auto"
                 />
               </div>
               
