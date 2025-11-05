@@ -78,11 +78,13 @@ const ErrorModal: React.FC<ErrorModalProps> = ({
           {/* Warning Icon */}
           <div className="mb-6 flex justify-center">
             <div className="relative">
-              <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg">
-                <AlertTriangle className="w-8 h-8 text-yellow-900" fill="currentColor" />
-              </div>
+              <img 
+                src="/alert.png" 
+                alt="Alerta" 
+                className="w-16 h-16 drop-shadow-lg"
+              />
               {/* Pulse animation ring */}
-              <div className="absolute inset-0 w-16 h-16 bg-yellow-400 rounded-full animate-ping opacity-20"></div>
+              <div className="absolute inset-0 w-16 h-16 bg-yellow-400 rounded-full animate-ping opacity-10"></div>
             </div>
           </div>
 
