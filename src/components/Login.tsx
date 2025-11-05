@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, Heart } from 'lucide-react';
+import ErrorModal from './ErrorModal';
 
 interface LoginProps {
   onLogin: (role: string) => void;
@@ -10,6 +11,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [documentNumber, setDocumentNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +37,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         onLogin(data.user.role);
       } else {
         const errorData = await response.json();
-        setError(errorData.message || 'Error de autenticación');
+        setShowErrorModal(true);
       }
     } catch (error) {
       // Fallback to mock authentication for development
@@ -50,7 +52,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       if (user) {
         onLogin(user.role);
       } else {
-        setError('Documento no encontrado');
+        setShowErrorModal(true);
       }
     } finally {
       setLoading(false);
@@ -201,6 +203,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </p>
         </div>
       </footer>
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="¡Ups, parece que algo salió mal!"
+        message="Las credenciales proporcionadas no son válidas"
+        buttonText="Aceptar"
+      />
     </div>
   );
 };
