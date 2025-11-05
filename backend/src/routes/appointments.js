@@ -23,11 +23,27 @@ router.get('/', authMiddleware, async (req, res) => {
 
     const appointments = await Appointment.find(filter)
       .populate('pacienteId', 'nombre apellido cedula telefono')
-      .populate('medicoId', 'name')
+      .populate({
+        path: 'medicoId',
+        populate: {
+          path: 'userId',
+          select: 'name'
+        }
+      })
       .sort({ fecha: 1, hora: 1 });
     
-    res.json(appointments);
+    // Transform the response to match expected format
+    const transformedAppointments = appointments.map(appointment => ({
+      ...appointment.toObject(),
+      medicoId: {
+        _id: appointment.medicoId._id,
+        name: appointment.medicoId.userId ? appointment.medicoId.userId.name : `Dr. ${appointment.medicoId.nombre} ${appointment.medicoId.apellido}`
+      }
+    }));
+    
+    res.json(transformedAppointments);
   } catch (error) {
+    console.error('Error fetching appointments:', error);
     res.status(500).json({ message: 'Error del servidor' });
   }
 });
@@ -35,8 +51,16 @@ router.get('/', authMiddleware, async (req, res) => {
 // Create appointment
 router.post('/', authMiddleware, async (req, res) => {
   try {
+    // Find the doctor to get the userId
+    const Doctor = require('../models/Doctor');
+    const doctor = await Doctor.findById(req.body.medicoId);
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor no encontrado' });
+    }
+
     const appointment = new Appointment({
       ...req.body,
+      medicoId: doctor.userId, // Use the doctor's userId for the appointment
       createdBy: req.user.userId
     });
     await appointment.save();
@@ -47,6 +71,7 @@ router.post('/', authMiddleware, async (req, res) => {
     
     res.status(201).json(populatedAppointment);
   } catch (error) {
+    console.error('Error creating appointment:', error);
     res.status(500).json({ message: 'Error del servidor' });
   }
 });

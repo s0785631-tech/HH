@@ -15,16 +15,38 @@ interface Patient {
 interface Appointment {
   _id: string;
   pacienteId: Patient;
-  medicoId: { name: string };
+  medicoId: { 
+    _id: string;
+    name: string; 
+  };
   fecha: string;
   hora: string;
   motivo: string;
   estado: 'programada' | 'confirmada' | 'en_curso' | 'completada' | 'cancelada' | 'no_asistio';
 }
 
+interface Doctor {
+  _id: string;
+  nombre: string;
+  apellido: string;
+  especialidad: string;
+  consultorio: {
+    numero: string;
+    nombre: string;
+  };
+  horarios: {
+    dia: string;
+    horaInicio: string;
+    horaFin: string;
+    activo: boolean;
+  }[];
+}
+
 const RecepcionDashboard: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [availableHours, setAvailableHours] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showNewAppointment, setShowNewAppointment] = useState(false);
@@ -69,7 +91,14 @@ const RecepcionDashboard: React.FC = () => {
   useEffect(() => {
     fetchAppointments();
     fetchPatients();
+    fetchDoctors();
   }, [selectedDate]);
+
+  useEffect(() => {
+    if (newAppointment.medicoId && newAppointment.fecha) {
+      fetchAvailableHours();
+    }
+  }, [newAppointment.medicoId, newAppointment.fecha]);
 
   const fetchAppointments = async () => {
     try {
@@ -111,6 +140,69 @@ const RecepcionDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error fetching patients:', error);
     }
+  };
+
+  const fetchDoctors = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/doctors`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setDoctors(data);
+      } else {
+        setDoctors([]);
+      }
+    } catch (error) {
+      console.error('Error fetching doctors:', error);
+      setDoctors([]);
+    }
+  };
+
+  const fetchAvailableHours = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/doctors/${newAppointment.medicoId}/horarios/${newAppointment.fecha}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.disponible) {
+          const hours = generateAvailableHours(data.horario.horaInicio, data.horario.horaFin, data.horasOcupadas);
+          setAvailableHours(hours);
+        } else {
+          setAvailableHours([]);
+        }
+      } else {
+        setAvailableHours([]);
+      }
+    } catch (error) {
+      console.error('Error fetching available hours:', error);
+      setAvailableHours([]);
+    }
+  };
+
+  const generateAvailableHours = (startTime: string, endTime: string, occupiedHours: string[]) => {
+    const hours = [];
+    const start = new Date(`2000-01-01T${startTime}`);
+    const end = new Date(`2000-01-01T${endTime}`);
+    
+    while (start < end) {
+      const timeString = start.toTimeString().slice(0, 5);
+      if (!occupiedHours.includes(timeString)) {
+        hours.push(timeString);
+      }
+      start.setMinutes(start.getMinutes() + 30); // Citas cada 30 minutos
+    }
+    
+    return hours;
   };
 
   const searchPatientByCedula = async () => {
@@ -211,13 +303,18 @@ const RecepcionDashboard: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
+      const appointmentData = {
+        ...newAppointment,
+        medicoId: newAppointment.medicoId // Ahora es el ID del doctor
+      };
+      
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/appointments`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(newAppointment)
+        body: JSON.stringify(appointmentData)
       });
       
       if (response.ok) {
@@ -232,6 +329,7 @@ const RecepcionDashboard: React.FC = () => {
           hora: '',
           motivo: ''
         });
+        setAvailableHours([]);
         
         // Mostrar notificación de éxito
         setSuccessMessage('¡Cita creada exitosamente!');
@@ -305,6 +403,7 @@ const RecepcionDashboard: React.FC = () => {
       hora: '',
       motivo: ''
     });
+    setAvailableHours([]);
   };
 
   const filteredPatients = patients.filter(patient =>
@@ -443,7 +542,7 @@ const RecepcionDashboard: React.FC = () => {
                       </div>
                       
                       <p className="text-gray-700 mb-3">{appointment.motivo}</p>
-                      <p className="text-sm text-gray-500">Dr. {appointment.medicoId.name}</p>
+                      <p className="text-sm text-gray-500">{appointment.medicoId.name}</p>
                     </div>
                     
                     <div className="flex flex-col space-y-2">
@@ -577,6 +676,23 @@ const RecepcionDashboard: React.FC = () => {
                 </div>
               )}
               
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Doctor</label>
+                <select
+                  required
+                  value={newAppointment.medicoId}
+                  onChange={(e) => setNewAppointment({...newAppointment, medicoId: e.target.value, hora: ''})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Seleccionar doctor</option>
+                  {doctors.map(doctor => (
+                    <option key={doctor._id} value={doctor._id}>
+                      Dr. {doctor.nombre} {doctor.apellido} - {doctor.especialidad} (Consultorio {doctor.consultorio.numero})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Fecha</label>
@@ -591,15 +707,32 @@ const RecepcionDashboard: React.FC = () => {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Hora</label>
-                  <input
-                    type="time"
+                  <select
                     required
                     value={newAppointment.hora}
                     onChange={(e) => setNewAppointment({...newAppointment, hora: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                    disabled={!newAppointment.medicoId || availableHours.length === 0}
+                  >
+                    <option value="">
+                      {!newAppointment.medicoId ? 'Seleccione un doctor primero' : 
+                       availableHours.length === 0 ? 'No hay horarios disponibles' : 
+                       'Seleccionar hora'}
+                    </option>
+                    {availableHours.map(hour => (
+                      <option key={hour} value={hour}>{hour}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
+              
+              {newAppointment.medicoId && availableHours.length === 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-sm text-yellow-800">
+                    El doctor seleccionado no tiene horarios disponibles para esta fecha.
+                  </p>
+                </div>
+              )}
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Motivo</label>
@@ -622,7 +755,7 @@ const RecepcionDashboard: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={!foundPatient}
+                  disabled={!foundPatient || !newAppointment.medicoId || !newAppointment.hora}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Crear Cita
