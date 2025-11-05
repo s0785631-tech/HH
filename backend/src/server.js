@@ -1,13 +1,13 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import mongoose from 'mongoose';
-import authRoutes from './routes/auth';
-import patientRoutes from './routes/patients';
-import appointmentRoutes from './routes/appointments';
-import triageRoutes from './routes/triage';
-import consultationRoutes from './routes/consultations';
-import dashboardRoutes from './routes/dashboard';
+const express = require('express');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const mongoose = require('mongoose');
+const authRoutes = require('./routes/auth');
+const patientRoutes = require('./routes/patients');
+const appointmentRoutes = require('./routes/appointments');
+const triageRoutes = require('./routes/triage');
+const consultationRoutes = require('./routes/consultations');
+const dashboardRoutes = require('./routes/dashboard');
 
 dotenv.config();
 
@@ -19,7 +19,7 @@ app.use(cors());
 app.use(express.json());
 
 // Database connection
-mongoose.connect(process.env.MONGODB_URI!)
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/saviser')
   .then(() => console.log('Connected to MongoDB'))
   .catch((error) => console.error('MongoDB connection error:', error));
 

@@ -1,6 +1,6 @@
-import express from 'express';
-import Triage from '../models/Triage';
-import { authMiddleware } from '../middleware/auth';
+const express = require('express');
+const Triage = require('../models/Triage');
+const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -8,10 +8,10 @@ const router = express.Router();
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const { fecha, estado } = req.query;
-    let filter: any = {};
+    let filter = {};
     
     if (fecha) {
-      const startDate = new Date(fecha as string);
+      const startDate = new Date(fecha);
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + 1);
       filter.fechaHora = { $gte: startDate, $lt: endDate };
@@ -22,7 +22,7 @@ router.get('/', authMiddleware, async (req, res) => {
     }
 
     const triages = await Triage.find(filter)
-      .populate('pacienteId', 'nombre apellido cedula edad')
+      .populate('pacienteId', 'nombre apellido cedula fechaNacimiento')
       .populate('enfermeraId', 'name')
       .sort({ fechaHora: -1 });
     
@@ -42,7 +42,7 @@ router.post('/', authMiddleware, async (req, res) => {
     await triage.save();
     
     const populatedTriage = await Triage.findById(triage._id)
-      .populate('pacienteId', 'nombre apellido cedula')
+      .populate('pacienteId', 'nombre apellido cedula fechaNacimiento')
       .populate('enfermeraId', 'name');
     
     res.status(201).json(populatedTriage);
@@ -58,7 +58,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
       req.params.id,
       req.body,
       { new: true, runValidators: true }
-    ).populate('pacienteId', 'nombre apellido cedula')
+    ).populate('pacienteId', 'nombre apellido cedula fechaNacimiento')
      .populate('enfermeraId', 'name');
     
     if (!triage) {
@@ -71,4 +71,4 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

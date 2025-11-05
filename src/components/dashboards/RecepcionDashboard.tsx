@@ -71,27 +71,7 @@ const RecepcionDashboard: React.FC = () => {
         const data = await response.json();
         setAppointments(data);
       } else {
-        // Mock data for development
-        setAppointments([
-          {
-            _id: '1',
-            pacienteId: { _id: '1', nombre: 'Juan', apellido: 'Pérez', cedula: '12345678', telefono: '555-0101' },
-            medicoId: { name: 'Dr. Carlos Mendez' },
-            fecha: selectedDate,
-            hora: '09:00',
-            motivo: 'Consulta general',
-            estado: 'programada'
-          },
-          {
-            _id: '2',
-            pacienteId: { _id: '2', nombre: 'María', apellido: 'González', cedula: '87654321', telefono: '555-0102' },
-            medicoId: { name: 'Dr. Carlos Mendez' },
-            fecha: selectedDate,
-            hora: '10:30',
-            motivo: 'Control de presión',
-            estado: 'confirmada'
-          }
-        ]);
+        setAppointments([]);
       }
     } catch (error) {
       console.error('Error fetching appointments:', error);
@@ -113,11 +93,7 @@ const RecepcionDashboard: React.FC = () => {
         const data = await response.json();
         setPatients(data);
       } else {
-        // Mock data for development
-        setPatients([
-          { _id: '1', nombre: 'Juan', apellido: 'Pérez', cedula: '12345678', telefono: '555-0101', email: 'juan@email.com' },
-          { _id: '2', nombre: 'María', apellido: 'González', cedula: '87654321', telefono: '555-0102', email: 'maria@email.com' }
-        ]);
+        setPatients([]);
       }
     } catch (error) {
       console.error('Error fetching patients:', error);
@@ -152,18 +128,8 @@ const RecepcionDashboard: React.FC = () => {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ estado: newStatus })
-      });
-      
-      if (response.ok) {
-        fetchAppointments();
       } else {
-        // Mock update for development
-        setAppointments(appointments.map(apt => 
-          apt._id === appointmentId ? { ...apt, estado: newStatus as any } : apt
-        ));
+        console.error('Error updating appointment status');
       }
     } catch (error) {
       console.error('Error updating appointment:', error);
@@ -346,7 +312,7 @@ const RecepcionDashboard: React.FC = () => {
             </div>
             
             <div className="divide-y divide-gray-200">
-              {appointments.map((appointment) => (
+              {appointments.length > 0 ? appointments.map((appointment) => (
                 <div key={appointment._id} className="p-6 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -395,7 +361,12 @@ const RecepcionDashboard: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="p-6 text-center text-gray-500">
+                  <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p>No hay citas programadas para esta fecha</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -418,7 +389,7 @@ const RecepcionDashboard: React.FC = () => {
               </div>
               
               <div className="space-y-3 max-h-96 overflow-y-auto">
-                {filteredPatients.map((patient) => (
+                {filteredPatients.length > 0 ? filteredPatients.map((patient) => (
                   <div key={patient._id} className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                     <div className="flex items-center justify-between">
                       <div>
@@ -438,7 +409,12 @@ const RecepcionDashboard: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center text-gray-500 py-8">
+                    <Users className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                    <p>No se encontraron pacientes</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

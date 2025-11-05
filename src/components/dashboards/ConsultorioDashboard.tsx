@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, FileText, Stethoscope, Clock, User, Heart, Thermometer, Activity, Pill, TestTube, Save, Eye, CreditCard as Edit, Plus } from 'lucide-react';
+import { Users, Calendar, FileText, Stethoscope, Clock, User, Heart, Thermometer, Activity, Pill, TestTube, Save, Eye, CreditCard as Edit, Plus, AlertTriangle } from 'lucide-react';
 
 interface Patient {
   _id: string;
@@ -33,16 +33,33 @@ interface Consultation {
   fechaHora: string;
 }
 
+interface PendingTriage {
+  _id: string;
+  pacienteId: Patient;
+  sintomas: string;
+  prioridad: 'alta' | 'media' | 'baja';
+  signosVitales: {
+    presionArterial: string;
+    temperatura: number;
+    pulso: number;
+    saturacionOxigeno: number;
+    frecuenciaRespiratoria?: number;
+  };
+  fechaHora: string;
+}
+
 const ConsultorioDashboard: React.FC = () => {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [pendingTriages, setPendingTriages] = useState<PendingTriage[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [showNewConsultation, setShowNewConsultation] = useState(false);
-  const [activeTab, setActiveTab] = useState<'today' | 'history' | 'new'>('today');
+  const [activeTab, setActiveTab] = useState<'today' | 'triages' | 'history'>('today');
   const [loading, setLoading] = useState(true);
 
   const [newConsultation, setNewConsultation] = useState({
     pacienteId: '',
+    triageId: '',
     motivoConsulta: '',
     anamnesis: '',
     examenFisico: '',
@@ -55,6 +72,7 @@ const ConsultorioDashboard: React.FC = () => {
   useEffect(() => {
     fetchConsultations();
     fetchPatients();
+    fetchPendingTriages();
   }, []);
 
   const fetchConsultations = async () => {
@@ -71,34 +89,7 @@ const ConsultorioDashboard: React.FC = () => {
         const data = await response.json();
         setConsultations(data);
       } else {
-        // Mock data for development
-        setConsultations([
-          {
-            _id: '1',
-            pacienteId: {
-              _id: '1',
-              nombre: 'Juan',
-              apellido: 'Pérez',
-              cedula: '12345678',
-              fechaNacimiento: '1980-05-15',
-              telefono: '555-0101'
-            },
-            motivoConsulta: 'Dolor de pecho y dificultad respiratoria',
-            anamnesis: 'Paciente refiere dolor opresivo en el pecho desde hace 2 días, acompañado de disnea de esfuerzo.',
-            examenFisico: 'PA: 140/90, FC: 95, FR: 22, T: 36.8°C. Auscultación cardíaca: soplo sistólico grado II/VI.',
-            diagnostico: 'Hipertensión arterial. Soplo cardíaco a descartar cardiopatía.',
-            tratamiento: 'Iniciar tratamiento antihipertensivo. Control cardiológico.',
-            medicamentos: [
-              { nombre: 'Enalapril', dosis: '10mg', frecuencia: '2 veces al día', duracion: '30 días' }
-            ],
-            examenes: [
-              { tipo: 'Electrocardiograma', descripcion: 'ECG de 12 derivaciones', urgente: false },
-              { tipo: 'Ecocardiograma', descripcion: 'Evaluación función ventricular', urgente: true }
-            ],
-            estado: 'en_curso',
-            fechaHora: new Date().toISOString()
-          }
-        ]);
+        setConsultations([]);
       }
     } catch (error) {
       console.error('Error fetching consultations:', error);
@@ -120,14 +111,30 @@ const ConsultorioDashboard: React.FC = () => {
         const data = await response.json();
         setPatients(data);
       } else {
-        // Mock data for development
-        setPatients([
-          { _id: '1', nombre: 'Juan', apellido: 'Pérez', cedula: '12345678', fechaNacimiento: '1980-05-15', telefono: '555-0101' },
-          { _id: '2', nombre: 'María', apellido: 'González', cedula: '87654321', fechaNacimiento: '1975-08-22', telefono: '555-0102' }
-        ]);
+        setPatients([]);
       }
     } catch (error) {
       console.error('Error fetching patients:', error);
+    }
+  };
+
+  const fetchPendingTriages = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/consultations/pending-triages`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPendingTriages(data);
+      } else {
+        setPendingTriages([]);
+      }
+    } catch (error) {
+      console.error('Error fetching pending triages:', error);
     }
   };
 
@@ -146,9 +153,11 @@ const ConsultorioDashboard: React.FC = () => {
       
       if (response.ok) {
         fetchConsultations();
+        fetchPendingTriages();
         setShowNewConsultation(false);
         setNewConsultation({
           pacienteId: '',
+          triageId: '',
           motivoConsulta: '',
           anamnesis: '',
           examenFisico: '',
@@ -200,11 +209,26 @@ const ConsultorioDashboard: React.FC = () => {
     return age;
   };
 
+  const createConsultationFromTriage = (triage: PendingTriage) => {
+    setNewConsultation({
+      pacienteId: triage.pacienteId._id,
+      triageId: triage._id,
+      motivoConsulta: triage.sintomas,
+      anamnesis: '',
+      examenFisico: `Signos vitales: PA: ${triage.signosVitales.presionArterial}, T°: ${triage.signosVitales.temperatura}°C, FC: ${triage.signosVitales.pulso} bpm, SpO2: ${triage.signosVitales.saturacionOxigeno}%${triage.signosVitales.frecuenciaRespiratoria ? `, FR: ${triage.signosVitales.frecuenciaRespiratoria} rpm` : ''}`,
+      diagnostico: '',
+      tratamiento: '',
+      medicamentos: [{ nombre: '', dosis: '', frecuencia: '', duracion: '' }],
+      examenes: [{ tipo: '', descripcion: '', urgente: false }]
+    });
+    setShowNewConsultation(true);
+  };
+
   const todayStats = {
     totalConsultations: consultations.length,
     completed: consultations.filter(c => c.estado === 'completada').length,
     inProgress: consultations.filter(c => c.estado === 'en_curso').length,
-    pending: 5 // Mock pending appointments
+    pendingTriages: pendingTriages.length
   };
 
   return (
@@ -271,10 +295,10 @@ const ConsultorioDashboard: React.FC = () => {
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Pendientes</p>
-                <p className="text-2xl font-bold text-blue-600">{todayStats.pending}</p>
+                <p className="text-sm font-medium text-gray-600">Triajes Pendientes</p>
+                <p className="text-2xl font-bold text-blue-600">{todayStats.pendingTriages}</p>
               </div>
-              <Calendar className="w-8 h-8 text-blue-600" />
+              <AlertTriangle className="w-8 h-8 text-blue-600" />
             </div>
           </div>
         </div>
@@ -295,6 +319,16 @@ const ConsultorioDashboard: React.FC = () => {
                 Consultas de Hoy
               </button>
               <button
+                onClick={() => setActiveTab('triages')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'triages'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Triajes Pendientes ({pendingTriages.length})
+              </button>
+              <button
                 onClick={() => setActiveTab('history')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'history'
@@ -311,7 +345,7 @@ const ConsultorioDashboard: React.FC = () => {
           <div className="p-6">
             {activeTab === 'today' && (
               <div className="space-y-6">
-                {consultations.map((consultation) => (
+                {consultations.length > 0 ? consultations.map((consultation) => (
                   <div key={consultation._id} className="border border-gray-200 rounded-lg p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center space-x-4">
@@ -431,7 +465,94 @@ const ConsultorioDashboard: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center py-12">
+                    <Stethoscope className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay consultas hoy</h3>
+                    <p className="text-gray-600">Las consultas del día aparecerán aquí</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'triages' && (
+              <div className="space-y-6">
+                {pendingTriages.length > 0 ? pendingTriages.map((triage) => (
+                  <div key={triage._id} className="border border-gray-200 rounded-lg p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="bg-orange-100 p-3 rounded-full">
+                          <AlertTriangle className="w-6 h-6 text-orange-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {triage.pacienteId.nombre} {triage.pacienteId.apellido}
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            {calculateAge(triage.pacienteId.fechaNacimiento)} años • C.I: {triage.pacienteId.cedula}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          triage.prioridad === 'alta' ? 'bg-red-100 text-red-800' :
+                          triage.prioridad === 'media' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          Prioridad {triage.prioridad.toUpperCase()}
+                        </span>
+                        <button
+                          onClick={() => createConsultationFromTriage(triage)}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          Iniciar Consulta
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Síntomas</h4>
+                        <p className="text-gray-700 text-sm mb-4">{triage.sintomas}</p>
+                        
+                        <h4 className="font-medium text-gray-900 mb-2">Signos Vitales</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="flex items-center space-x-2">
+                            <Heart className="w-4 h-4 text-red-500" />
+                            <span className="text-sm text-gray-600">PA: {triage.signosVitales.presionArterial}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Thermometer className="w-4 h-4 text-orange-500" />
+                            <span className="text-sm text-gray-600">T°: {triage.signosVitales.temperatura}°C</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Activity className="w-4 h-4 text-blue-500" />
+                            <span className="text-sm text-gray-600">FC: {triage.signosVitales.pulso} bpm</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Activity className="w-4 h-4 text-green-500" />
+                            <span className="text-sm text-gray-600">SpO2: {triage.signosVitales.saturacionOxigeno}%</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <Clock className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-gray-600">
+                            Triaje realizado: {new Date(triage.fechaHora).toLocaleString('es-ES')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="text-center py-12">
+                    <AlertTriangle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay triajes pendientes</h3>
+                    <p className="text-gray-600">Los triajes completados aparecerán aquí para iniciar consultas</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -462,6 +583,7 @@ const ConsultorioDashboard: React.FC = () => {
                   value={newConsultation.pacienteId}
                   onChange={(e) => setNewConsultation({...newConsultation, pacienteId: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={!!newConsultation.triageId}
                 >
                   <option value="">Seleccionar paciente</option>
                   {patients.map(patient => (
@@ -470,6 +592,11 @@ const ConsultorioDashboard: React.FC = () => {
                     </option>
                   ))}
                 </select>
+                {newConsultation.triageId && (
+                  <p className="text-sm text-blue-600 mt-1">
+                    Paciente seleccionado desde triaje
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -1,49 +1,22 @@
-import mongoose, { Document, Schema } from 'mongoose';
+const mongoose = require('mongoose');
 
-export interface IConsultation extends Document {
-  pacienteId: mongoose.Types.ObjectId;
-  medicoId: mongoose.Types.ObjectId;
-  citaId?: mongoose.Types.ObjectId;
-  triageId?: mongoose.Types.ObjectId;
-  motivoConsulta: string;
-  anamnesis: string;
-  examenFisico: string;
-  diagnostico: string;
-  tratamiento: string;
-  medicamentos?: {
-    nombre: string;
-    dosis: string;
-    frecuencia: string;
-    duracion: string;
-  }[];
-  examenes?: {
-    tipo: string;
-    descripcion: string;
-    urgente: boolean;
-  }[];
-  proximaCita?: Date;
-  estado: 'en_curso' | 'completada';
-  fechaHora: Date;
-  createdAt: Date;
-}
-
-const ConsultationSchema: Schema = new Schema({
+const ConsultationSchema = new mongoose.Schema({
   pacienteId: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Patient',
     required: true
   },
   medicoId: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
   citaId: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Appointment'
   },
   triageId: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Triage'
   },
   motivoConsulta: {
@@ -117,4 +90,4 @@ const ConsultationSchema: Schema = new Schema({
   }
 });
 
-export default mongoose.model<IConsultation>('Consultation', ConsultationSchema);
+module.exports = mongoose.model('Consultation', ConsultationSchema);

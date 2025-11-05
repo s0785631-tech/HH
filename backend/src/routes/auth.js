@@ -1,36 +1,38 @@
-import express from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import User from '../models/User';
+const express = require('express');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
 const router = express.Router();
 
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { documentType, documentNumber } = req.body;
 
-    const user = await User.findOne({ email, isActive: true });
+    // For development, use mock authentication
+    const mockUsers = [
+      { documentNumber: '12345678', role: 'empresa', name: 'Director General' },
+      { documentNumber: '87654321', role: 'recepcion', name: 'Ana García' },
+      { documentNumber: '11111111', role: 'consultorio', name: 'Dr. Carlos Mendez' },
+      { documentNumber: '22222222', role: 'enfermeria', name: 'Enf. María López' },
+    ];
+
+    const user = mockUsers.find(u => u.documentNumber === documentNumber);
     if (!user) {
-      return res.status(401).json({ message: 'Credenciales inválidas' });
-    }
-
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) {
-      return res.status(401).json({ message: 'Credenciales inválidas' });
+      return res.status(401).json({ message: 'Documento no encontrado' });
     }
 
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
-      process.env.JWT_SECRET!,
+      { userId: user.documentNumber, role: user.role },
+      process.env.JWT_SECRET || 'secret',
       { expiresIn: '8h' }
     );
 
     res.json({
       token,
       user: {
-        id: user._id,
-        email: user.email,
+        id: user.documentNumber,
         name: user.name,
         role: user.role
       }
@@ -67,4 +69,4 @@ router.post('/seed', async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

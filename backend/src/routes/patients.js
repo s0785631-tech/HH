@@ -1,6 +1,6 @@
-import express from 'express';
-import Patient from '../models/Patient';
-import { authMiddleware } from '../middleware/auth';
+const express = require('express');
+const Patient = require('../models/Patient');
+const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -77,4 +77,4 @@ router.get('/search/:query', authMiddleware, async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

@@ -1,30 +1,6 @@
-import mongoose, { Document, Schema } from 'mongoose';
+const mongoose = require('mongoose');
 
-export interface IPatient extends Document {
-  cedula: string;
-  nombre: string;
-  apellido: string;
-  fechaNacimiento: Date;
-  telefono: string;
-  email?: string;
-  direccion: string;
-  genero: 'M' | 'F';
-  tipoSangre?: string;
-  alergias?: string[];
-  contactoEmergencia: {
-    nombre: string;
-    telefono: string;
-    relacion: string;
-  };
-  seguroMedico?: {
-    compania: string;
-    numeroPoliza: string;
-  };
-  isActive: boolean;
-  createdAt: Date;
-}
-
-const PatientSchema: Schema = new Schema({
+const PatientSchema = new mongoose.Schema({
   cedula: {
     type: String,
     required: true,
@@ -93,4 +69,4 @@ const PatientSchema: Schema = new Schema({
   }
 });
 
-export default mongoose.model<IPatient>('Patient', PatientSchema);
+module.exports = mongoose.model('Patient', PatientSchema);

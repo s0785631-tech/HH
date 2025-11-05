@@ -1,9 +1,9 @@
-import express from 'express';
-import Patient from '../models/Patient';
-import Appointment from '../models/Appointment';
-import Triage from '../models/Triage';
-import Consultation from '../models/Consultation';
-import { authMiddleware } from '../middleware/auth';
+const express = require('express');
+const Patient = require('../models/Patient');
+const Appointment = require('../models/Appointment');
+const Triage = require('../models/Triage');
+const Consultation = require('../models/Consultation');
+const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -103,4 +103,4 @@ router.get('/recent-activities', authMiddleware, async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

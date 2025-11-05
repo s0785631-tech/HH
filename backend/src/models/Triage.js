@@ -1,26 +1,8 @@
-import mongoose, { Document, Schema } from 'mongoose';
+const mongoose = require('mongoose');
 
-export interface ITriage extends Document {
-  pacienteId: mongoose.Types.ObjectId;
-  sintomas: string;
-  prioridad: 'alta' | 'media' | 'baja';
-  signosVitales: {
-    presionArterial: string;
-    temperatura: number;
-    pulso: number;
-    saturacionOxigeno: number;
-    frecuenciaRespiratoria?: number;
-  };
-  estado: 'pendiente' | 'en_proceso' | 'completado';
-  observaciones?: string;
-  enfermeraId: mongoose.Types.ObjectId;
-  fechaHora: Date;
-  createdAt: Date;
-}
-
-const TriageSchema: Schema = new Schema({
+const TriageSchema = new mongoose.Schema({
   pacienteId: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Patient',
     required: true
   },
@@ -64,7 +46,7 @@ const TriageSchema: Schema = new Schema({
     type: String
   },
   enfermeraId: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
@@ -78,4 +60,4 @@ const TriageSchema: Schema = new Schema({
   }
 });
 
-export default mongoose.model<ITriage>('Triage', TriageSchema);
+module.exports = mongoose.model('Triage', TriageSchema);

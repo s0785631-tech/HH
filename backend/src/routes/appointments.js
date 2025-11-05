@@ -1,6 +1,6 @@
-import express from 'express';
-import Appointment from '../models/Appointment';
-import { authMiddleware } from '../middleware/auth';
+const express = require('express');
+const Appointment = require('../models/Appointment');
+const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -8,10 +8,10 @@ const router = express.Router();
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const { fecha, estado } = req.query;
-    let filter: any = {};
+    let filter = {};
     
     if (fecha) {
-      const startDate = new Date(fecha as string);
+      const startDate = new Date(fecha);
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + 1);
       filter.fecha = { $gte: startDate, $lt: endDate };
@@ -71,4 +71,4 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

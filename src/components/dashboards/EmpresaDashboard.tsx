@@ -51,25 +51,25 @@ const EmpresaDashboard: React.FC = () => {
         const data = await response.json();
         setStats(data);
       } else {
-        // Fallback to mock data
+        // No data available
         setStats({
-          totalPatients: 1247,
-          todayAppointments: 23,
-          pendingTriages: 8,
-          todayConsultations: 15,
-          monthlyAppointments: 456,
-          monthlyConsultations: 389
+          totalPatients: 0,
+          todayAppointments: 0,
+          pendingTriages: 0,
+          todayConsultations: 0,
+          monthlyAppointments: 0,
+          monthlyConsultations: 0
         });
       }
     } catch (error) {
-      // Mock data for development
+      // No data available
       setStats({
-        totalPatients: 1247,
-        todayAppointments: 23,
-        pendingTriages: 8,
-        todayConsultations: 15,
-        monthlyAppointments: 456,
-        monthlyConsultations: 389
+        totalPatients: 0,
+        todayAppointments: 0,
+        pendingTriages: 0,
+        todayConsultations: 0,
+        monthlyAppointments: 0,
+        monthlyConsultations: 0
       });
     } finally {
       setLoading(false);
@@ -139,13 +139,7 @@ const EmpresaDashboard: React.FC = () => {
     }
   ];
 
-  const recentActivities = [
-    { type: 'appointment', message: 'Nueva cita programada - Juan Pérez', time: '10:30 AM' },
-    { type: 'consultation', message: 'Consulta completada - María González', time: '10:15 AM' },
-    { type: 'triage', message: 'Triaje de alta prioridad - Carlos Ruiz', time: '09:45 AM' },
-    { type: 'patient', message: 'Nuevo paciente registrado - Ana Martínez', time: '09:30 AM' },
-    { type: 'appointment', message: 'Cita confirmada - Luis Rodríguez', time: '09:15 AM' }
-  ];
+  const recentActivities: any[] = [];
 
   if (loading) {
     return (

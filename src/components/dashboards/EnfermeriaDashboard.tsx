@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   AlertTriangle, 
@@ -13,85 +13,132 @@ import {
   User,
   Calendar,
   TrendingUp,
-  Shield
+  Shield,
+  Search
 } from 'lucide-react';
 
+interface Patient {
+  _id: string;
+  nombre: string;
+  apellido: string;
+  cedula: string;
+  fechaNacimiento: string;
+  telefono: string;
+  genero: 'M' | 'F';
+}
+
 interface TriajeData {
-  id: string;
-  paciente: string;
-  edad: number;
+  _id?: string;
+  pacienteId: Patient;
   sintomas: string;
   prioridad: 'alta' | 'media' | 'baja';
   signosVitales: {
-    presion: string;
+    presionArterial: string;
     temperatura: number;
     pulso: number;
-    saturacion: number;
+    saturacionOxigeno: number;
+    frecuenciaRespiratoria?: number;
   };
-  hora: string;
   estado: 'pendiente' | 'en_proceso' | 'completado';
+  observaciones?: string;
+  fechaHora: string;
 }
 
 const EnfermeriaDashboard: React.FC = () => {
-  const [triajes, setTriajes] = useState<TriajeData[]>([
-    {
-      id: '1',
-      paciente: 'Juan Pérez',
-      edad: 45,
-      sintomas: 'Dolor de pecho, dificultad respiratoria',
-      prioridad: 'alta',
-      signosVitales: {
-        presion: '140/90',
-        temperatura: 37.2,
-        pulso: 95,
-        saturacion: 96
-      },
-      hora: '08:30',
-      estado: 'pendiente'
-    },
-    {
-      id: '2',
-      paciente: 'María González',
-      edad: 32,
-      sintomas: 'Fiebre, dolor de garganta',
-      prioridad: 'media',
-      signosVitales: {
-        presion: '120/80',
-        temperatura: 38.5,
-        pulso: 88,
-        saturacion: 98
-      },
-      hora: '09:15',
-      estado: 'en_proceso'
-    },
-    {
-      id: '3',
-      paciente: 'Carlos Ruiz',
-      edad: 28,
-      sintomas: 'Dolor de cabeza leve',
-      prioridad: 'baja',
-      signosVitales: {
-        presion: '110/70',
-        temperatura: 36.8,
-        pulso: 72,
-        saturacion: 99
-      },
-      hora: '09:45',
-      estado: 'completado'
-    }
-  ]);
+  const [triajes, setTriajes] = useState<TriajeData[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [searchCedula, setSearchCedula] = useState('');
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [nuevoTriaje, setNuevoTriaje] = useState({
-    paciente: '',
-    edad: '',
     sintomas: '',
-    presion: '',
+    presionArterial: '',
     temperatura: '',
     pulso: '',
-    saturacion: ''
+    saturacionOxigeno: '',
+    frecuenciaRespiratoria: '',
+    observaciones: ''
   });
 
-  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  useEffect(() => {
+    fetchTriajes();
+    fetchPatients();
+  }, []);
+
+  const fetchTriajes = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const today = new Date().toISOString().split('T')[0];
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/triage?fecha=${today}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setTriajes(data);
+      } else {
+        setTriajes([]);
+      }
+    } catch (error) {
+      console.error('Error fetching triages:', error);
+      setTriajes([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPatients = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/patients`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPatients(data);
+      } else {
+        setPatients([]);
+      }
+    } catch (error) {
+      console.error('Error fetching patients:', error);
+      setPatients([]);
+    }
+  };
+
+  const searchPatientByCedula = async () => {
+    if (!searchCedula.trim()) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/patients/search/${searchCedula}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.length > 0) {
+          setSelectedPatient(data[0]);
+          setMostrarFormulario(true);
+        } else {
+          alert('Paciente no encontrado');
+        }
+      } else {
+        alert('Error al buscar paciente');
+      }
+    } catch (error) {
+      console.error('Error searching patient:', error);
+      alert('Error al buscar paciente');
+    }
+  };
 
   const getPrioridadColor = (prioridad: string) => {
     switch (prioridad) {
@@ -111,52 +158,98 @@ const EnfermeriaDashboard: React.FC = () => {
     }
   };
 
-  const handleSubmitTriaje = (e: React.FormEvent) => {
+  const determinarPrioridad = (): 'alta' | 'media' | 'baja' => {
+    const temp = parseFloat(nuevoTriaje.temperatura);
+    const pulso = parseInt(nuevoTriaje.pulso);
+    const saturacion = parseInt(nuevoTriaje.saturacionOxigeno);
+    
+    if (temp > 38.5 || pulso > 100 || saturacion < 95) return 'alta';
+    if (temp > 37.5 || pulso > 90 || saturacion < 98) return 'media';
+    return 'baja';
+  };
+
+  const handleSubmitTriaje = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const determinarPrioridad = (): 'alta' | 'media' | 'baja' => {
-      const temp = parseFloat(nuevoTriaje.temperatura);
-      const pulso = parseInt(nuevoTriaje.pulso);
-      const saturacion = parseInt(nuevoTriaje.saturacion);
-      
-      if (temp > 38.5 || pulso > 100 || saturacion < 95) return 'alta';
-      if (temp > 37.5 || pulso > 90 || saturacion < 98) return 'media';
-      return 'baja';
-    };
+    if (!selectedPatient) return;
 
-    const nuevoRegistro: TriajeData = {
-      id: Date.now().toString(),
-      paciente: nuevoTriaje.paciente,
-      edad: parseInt(nuevoTriaje.edad),
+    const triageData = {
+      pacienteId: selectedPatient._id,
       sintomas: nuevoTriaje.sintomas,
       prioridad: determinarPrioridad(),
       signosVitales: {
-        presion: nuevoTriaje.presion,
+        presionArterial: nuevoTriaje.presionArterial,
         temperatura: parseFloat(nuevoTriaje.temperatura),
         pulso: parseInt(nuevoTriaje.pulso),
-        saturacion: parseInt(nuevoTriaje.saturacion)
+        saturacionOxigeno: parseInt(nuevoTriaje.saturacionOxigeno),
+        frecuenciaRespiratoria: nuevoTriaje.frecuenciaRespiratoria ? parseInt(nuevoTriaje.frecuenciaRespiratoria) : undefined
       },
-      hora: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-      estado: 'pendiente'
+      observaciones: nuevoTriaje.observaciones
     };
 
-    setTriajes([nuevoRegistro, ...triajes]);
-    setNuevoTriaje({
-      paciente: '',
-      edad: '',
-      sintomas: '',
-      presion: '',
-      temperatura: '',
-      pulso: '',
-      saturacion: ''
-    });
-    setMostrarFormulario(false);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/triage`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(triageData)
+      });
+      
+      if (response.ok) {
+        fetchTriajes();
+        setMostrarFormulario(false);
+        setSelectedPatient(null);
+        setSearchCedula('');
+        setNuevoTriaje({
+          sintomas: '',
+          presionArterial: '',
+          temperatura: '',
+          pulso: '',
+          saturacionOxigeno: '',
+          frecuenciaRespiratoria: '',
+          observaciones: ''
+        });
+      } else {
+        alert('Error al crear triaje');
+      }
+    } catch (error) {
+      console.error('Error creating triage:', error);
+      alert('Error al crear triaje');
+    }
   };
 
-  const actualizarEstado = (id: string, nuevoEstado: 'pendiente' | 'en_proceso' | 'completado') => {
-    setTriajes(triajes.map(triaje => 
-      triaje.id === id ? { ...triaje, estado: nuevoEstado } : triaje
-    ));
+  const actualizarEstado = async (id: string, nuevoEstado: 'pendiente' | 'en_proceso' | 'completado') => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/triage/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ estado: nuevoEstado })
+      });
+      
+      if (response.ok) {
+        fetchTriajes();
+      }
+    } catch (error) {
+      console.error('Error updating triage status:', error);
+    }
+  };
+
+  const calculateAge = (birthDate: string) => {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
   };
 
   const estadisticas = {
@@ -184,13 +277,27 @@ const EnfermeriaDashboard: React.FC = () => {
                 <p className="text-gray-600">Evaluación y clasificación de pacientes</p>
               </div>
             </div>
-            <button
-              onClick={() => setMostrarFormulario(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-            >
-              <User className="w-4 h-4" />
-              <span>Nuevo Triaje</span>
-            </button>
+            
+            {/* Search Patient */}
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  placeholder="Buscar por cédula..."
+                  value={searchCedula}
+                  onChange={(e) => setSearchCedula(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onKeyPress={(e) => e.key === 'Enter' && searchPatientByCedula()}
+                />
+                <button
+                  onClick={searchPatientByCedula}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                >
+                  <Search className="w-4 h-4" />
+                  <span>Buscar</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -256,13 +363,17 @@ const EnfermeriaDashboard: React.FC = () => {
           </div>
           
           <div className="divide-y divide-gray-200">
-            {triajes.map((triaje) => (
-              <div key={triaje.id} className="p-6 hover:bg-gray-50 transition-colors">
+            {triajes.length > 0 ? triajes.map((triaje) => (
+              <div key={triaje._id} className="p-6 hover:bg-gray-50 transition-colors">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-3">
-                      <h3 className="text-lg font-semibold text-gray-900">{triaje.paciente}</h3>
-                      <span className="text-sm text-gray-500">({triaje.edad} años)</span>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {triaje.pacienteId.nombre} {triaje.pacienteId.apellido}
+                      </h3>
+                      <span className="text-sm text-gray-500">
+                        ({calculateAge(triaje.pacienteId.fechaNacimiento)} años)
+                      </span>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getPrioridadColor(triaje.prioridad)}`}>
                         {triaje.prioridad.toUpperCase()}
                       </span>
@@ -276,7 +387,7 @@ const EnfermeriaDashboard: React.FC = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="flex items-center space-x-2">
                         <Heart className="w-4 h-4 text-red-500" />
-                        <span className="text-sm text-gray-600">PA: {triaje.signosVitales.presion}</span>
+                        <span className="text-sm text-gray-600">PA: {triaje.signosVitales.presionArterial}</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Thermometer className="w-4 h-4 text-orange-500" />
@@ -288,17 +399,19 @@ const EnfermeriaDashboard: React.FC = () => {
                       </div>
                       <div className="flex items-center space-x-2">
                         <Shield className="w-4 h-4 text-green-500" />
-                        <span className="text-sm text-gray-600">SpO2: {triaje.signosVitales.saturacion}%</span>
+                        <span className="text-sm text-gray-600">SpO2: {triaje.signosVitales.saturacionOxigeno}%</span>
                       </div>
                     </div>
                   </div>
                   
                   <div className="flex flex-col items-end space-y-2">
-                    <span className="text-sm text-gray-500">{triaje.hora}</span>
+                    <span className="text-sm text-gray-500">
+                      {new Date(triaje.fechaHora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                     <div className="flex space-x-2">
                       {triaje.estado === 'pendiente' && (
                         <button
-                          onClick={() => actualizarEstado(triaje.id, 'en_proceso')}
+                          onClick={() => actualizarEstado(triaje._id!, 'en_proceso')}
                           className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm"
                         >
                           Iniciar
@@ -306,7 +419,7 @@ const EnfermeriaDashboard: React.FC = () => {
                       )}
                       {triaje.estado === 'en_proceso' && (
                         <button
-                          onClick={() => actualizarEstado(triaje.id, 'completado')}
+                          onClick={() => actualizarEstado(triaje._id!, 'completado')}
                           className="px-3 py-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm"
                         >
                           Completar
@@ -316,48 +429,29 @@ const EnfermeriaDashboard: React.FC = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="p-12 text-center text-gray-500">
+                <Stethoscope className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No hay triajes registrados</h3>
+                <p className="text-gray-600">Busca un paciente por cédula para iniciar un triaje</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Modal Nuevo Triaje */}
-      {mostrarFormulario && (
+      {mostrarFormulario && selectedPatient && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900">Nuevo Triaje</h2>
+              <p className="text-gray-600">
+                Paciente: {selectedPatient.nombre} {selectedPatient.apellido} - C.I: {selectedPatient.cedula}
+              </p>
             </div>
             
             <form onSubmit={handleSubmitTriaje} className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nombre del Paciente
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={nuevoTriaje.paciente}
-                    onChange={(e) => setNuevoTriaje({...nuevoTriaje, paciente: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Edad
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={nuevoTriaje.edad}
-                    onChange={(e) => setNuevoTriaje({...nuevoTriaje, edad: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Síntomas Principales
@@ -371,7 +465,7 @@ const EnfermeriaDashboard: React.FC = () => {
                 />
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Presión Arterial
@@ -380,8 +474,8 @@ const EnfermeriaDashboard: React.FC = () => {
                     type="text"
                     required
                     placeholder="120/80"
-                    value={nuevoTriaje.presion}
-                    onChange={(e) => setNuevoTriaje({...nuevoTriaje, presion: e.target.value})}
+                    value={nuevoTriaje.presionArterial}
+                    onChange={(e) => setNuevoTriaje({...nuevoTriaje, presionArterial: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -420,17 +514,45 @@ const EnfermeriaDashboard: React.FC = () => {
                   <input
                     type="number"
                     required
-                    value={nuevoTriaje.saturacion}
-                    onChange={(e) => setNuevoTriaje({...nuevoTriaje, saturacion: e.target.value})}
+                    value={nuevoTriaje.saturacionOxigeno}
+                    onChange={(e) => setNuevoTriaje({...nuevoTriaje, saturacionOxigeno: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Freq. Respiratoria
+                  </label>
+                  <input
+                    type="number"
+                    value={nuevoTriaje.frecuenciaRespiratoria}
+                    onChange={(e) => setNuevoTriaje({...nuevoTriaje, frecuenciaRespiratoria: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
               
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Observaciones
+                </label>
+                <textarea
+                  rows={3}
+                  value={nuevoTriaje.observaciones}
+                  onChange={(e) => setNuevoTriaje({...nuevoTriaje, observaciones: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setMostrarFormulario(false)}
+                  onClick={() => {
+                    setMostrarFormulario(false);
+                    setSelectedPatient(null);
+                    setSearchCedula('');
+                  }}
                   className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   Cancelar
