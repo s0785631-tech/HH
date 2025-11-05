@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, Heart } from 'lucide-react';
 import ErrorModal from './ErrorModal';
+import SuccessToast from './SuccessToast';
 
 interface LoginProps {
   onLogin: (role: string) => void;
@@ -12,6 +13,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +36,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         const data = await response.json();
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        onLogin(data.user.role);
+        setShowSuccessToast(true);
+        setTimeout(() => {
+          onLogin(data.user.role);
+        }, 1500);
       } else {
         const errorData = await response.json();
         setShowErrorModal(true);
@@ -50,7 +55,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       const user = mockUsers.find(u => u.documentNumber === documentNumber);
       if (user) {
-        onLogin(user.role);
+        setShowSuccessToast(true);
+        setTimeout(() => {
+          onLogin(user.role);
+        }, 1500);
       } else {
         setShowErrorModal(true);
       }
@@ -61,9 +69,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   const quickLogin = (role: string, docNumber: string) => {
     setDocumentNumber(docNumber);
+    setShowSuccessToast(true);
     setTimeout(() => {
       onLogin(role);
-    }, 100);
+    }, 1500);
   };
 
   return (
@@ -212,6 +221,13 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         title="¡Ups, parece que algo salió mal!"
         message="Las credenciales proporcionadas no son válidas"
         buttonText="Aceptar"
+      />
+
+      {/* Success Toast */}
+      <SuccessToast
+        isOpen={showSuccessToast}
+        onClose={() => setShowSuccessToast(false)}
+        message="¡Bienvenido! Has iniciado sesión exitosamente"
       />
     </div>
   );
