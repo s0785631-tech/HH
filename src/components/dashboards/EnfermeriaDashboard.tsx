@@ -268,8 +268,8 @@ const EnfermeriaDashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <img 
-                src="/SAVISER.png" 
-                alt="SAVISER" 
+                src="/SAVISER copy.png" 
+                alt="SAVISER - Salud con calidad al servicio de todos" 
                 className="h-10 w-auto"
               />
               <div>

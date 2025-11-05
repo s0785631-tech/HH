@@ -76,10 +76,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             {/* Logo */}
             <div className="mb-12">
               <div className="flex items-center space-x-3 mb-8">
-                <div className="bg-blue-600 p-3 rounded-full">
-                  <Heart className="w-8 h-8 text-white" />
-                </div>
-                <h1 className="text-4xl font-bold text-blue-900">SAVISER</h1>
+                <img 
+                  src="/SAVISER copy.png" 
+                  alt="SAVISER - Salud con calidad al servicio de todos" 
+                  className="h-16 w-auto"
+                />
               </div>
               
               {/* Main Slogan */}
