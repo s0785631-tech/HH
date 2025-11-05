@@ -128,6 +128,13 @@ const RecepcionDashboard: React.FC = () => {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ estado: newStatus })
+      });
+      
+      if (response.ok) {
+        fetchAppointments();
       } else {
         console.error('Error updating appointment status');
       }
