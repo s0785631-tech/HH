@@ -78,7 +78,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         setShowErrorModal(true);
       }
     } finally {
-      setLoading(false);
+      setLoading(true);
     }
   };
 
