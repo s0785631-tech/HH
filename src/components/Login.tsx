@@ -44,7 +44,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           setTimeout(() => {
             setShowSuccessToast(false);
             onLogin(data.user.role);
-          }, 5300);
+          }, 3500);
         } else {
           onLogin(data.user.role);
         }
@@ -70,7 +70,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           setTimeout(() => {
             setShowSuccessToast(false);
             onLogin(user.role);
-          }, 5300);
+          }, 3500);
         } else {
           onLogin(user.role);
         }
@@ -91,7 +91,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       setTimeout(() => {
         setShowSuccessToast(false);
         onLogin(role);
-      }, 5300);
+      }, 3500);
     } else {
       onLogin(role);
     }
