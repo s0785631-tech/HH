@@ -40,8 +40,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         if (isFirstLogin) {
           setShowSuccessToast(true);
           setTimeout(() => {
-            onLogin(data.user.role);
             setIsFirstLogin(false);
+            setShowSuccessToast(false);
+            onLogin(data.user.role);
           }, 5300);
         } else {
           onLogin(data.user.role);
@@ -64,8 +65,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         if (isFirstLogin) {
           setShowSuccessToast(true);
           setTimeout(() => {
-            onLogin(user.role);
             setIsFirstLogin(false);
+            setShowSuccessToast(false);
+            onLogin(user.role);
           }, 5300);
         } else {
           onLogin(user.role);
@@ -83,8 +85,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     if (isFirstLogin) {
       setShowSuccessToast(true);
       setTimeout(() => {
-        onLogin(role);
         setIsFirstLogin(false);
+        setShowSuccessToast(false);
+        onLogin(role);
       }, 5300);
     } else {
       onLogin(role);
