@@ -422,21 +422,14 @@ const RecepcionDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
+      <div className="bg-gradient-to-r from-green-50 to-green-100 border-b border-green-200">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <img 
-                src="/SAVISER copy.png" 
-                alt="SAVISER - Salud con calidad al servicio de todos" 
-                className="h-10 w-auto"
-              />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Recepción</h1>
-                <p className="text-gray-600">Gestión de citas y pacientes</p>
-              </div>
+            <div>
+              <h1 className="text-3xl font-bold text-green-900 animate-fade-in">Recepción</h1>
+              <p className="text-green-700">Gestión de citas y pacientes</p>
             </div>
-            <div className="flex space-x-3">
+            {/* <div className="flex space-x-3">
               <button
                 onClick={() => setShowNewPatient(true)}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
@@ -451,7 +444,7 @@ const RecepcionDashboard: React.FC = () => {
                 <Plus className="w-4 h-4" />
                 <span>Nueva Cita</span>
               </button>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

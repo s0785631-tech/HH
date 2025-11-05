@@ -284,24 +284,17 @@ const EmpresaDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
+      <div className="bg-gradient-to-r from-purple-50 to-purple-100 border-b border-purple-200">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <img 
-                src="/SAVISER copy.png" 
-                alt="SAVISER - Salud con calidad al servicio de todos" 
-                className="h-10 w-auto"
-              />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Dashboard Ejecutivo</h1>
-                <p className="text-gray-600">Panel de control gerencial</p>
-              </div>
+            <div>
+              <h1 className="text-3xl font-bold text-purple-900 animate-fade-in">Dashboard Ejecutivo</h1>
+              <p className="text-purple-700">Panel de control gerencial</p>
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-right">
-                <p className="text-sm text-gray-500">Último acceso</p>
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm text-purple-600">Último acceso</p>
+                <p className="text-sm font-medium text-purple-900">
                   {new Date().toLocaleDateString('es-ES', { 
                     weekday: 'long', 
                     year: 'numeric', 
@@ -310,13 +303,13 @@ const EmpresaDashboard: React.FC = () => {
                   })}
                 </p>
               </div>
-              <button
+              {/* <button
                 onClick={() => setShowNewDoctor(true)}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
               >
                 <UserPlus className="w-4 h-4" />
                 <span>Nuevo Doctor</span>
-              </button>
+              </button> */}
             </div>
           </div>
         </div>

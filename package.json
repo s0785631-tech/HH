@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "backend": "cd backend && npm run dev",
+    "backend": "cd backend && PORT=3000 npm run dev",
     "backend:install": "cd backend && npm install"
   },
   "dependencies": {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Heart } from 'lucide-react';
+import { User, Heart, UserPlus } from 'lucide-react';
 import ErrorModal from './ErrorModal';
 import SuccessToast from './SuccessToast';
 
@@ -8,93 +8,126 @@ interface LoginProps {
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
+  const [isLogin, setIsLogin] = useState(true);
   const [documentType, setDocumentType] = useState('cedula');
   const [documentNumber, setDocumentNumber] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+
+  // Estados para registro
+  const [registerData, setRegisterData] = useState({
+    name: '',
+    email: '',
+    documentType: 'cedula',
+    documentNumber: '',
+    password: '',
+    confirmPassword: '',
+    role: 'recepcion'
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          documentType, 
-          documentNumber 
-        }),
-      });
+    if (isLogin) {
+      // Lógica de login
+      try {
+        const response = await fetch(`http://localhost:3000/api/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            documentType, 
+            documentNumber,
+            password 
+          }),
+        });
 
-      if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        if (response.ok) {
+          const data = await response.json();
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
 
-        const hasShownWelcome = sessionStorage.getItem('hasShownWelcome');
-        if (!hasShownWelcome) {
-          setShowSuccessToast(true);
-          sessionStorage.setItem('hasShownWelcome', 'true');
-          setTimeout(() => {
-            setShowSuccessToast(false);
+          const hasShownWelcome = sessionStorage.getItem('hasShownWelcome');
+          if (!hasShownWelcome) {
+            setShowSuccessToast(true);
+            sessionStorage.setItem('hasShownWelcome', 'true');
+            setTimeout(() => {
+              setShowSuccessToast(false);
+              onLogin(data.user.role);
+            }, 2000);
+          } else {
             onLogin(data.user.role);
-          }, 7000);
+          }
         } else {
-          onLogin(data.user.role);
+          const errorData = await response.json();
+          setShowErrorModal(true);
         }
-      } else {
-        const errorData = await response.json();
-        setShowErrorModal(true);
-      }
-    } catch (error) {
-      // Fallback to mock authentication for development
-      const mockUsers = [
-        { documentNumber: '12345678', role: 'empresa' },
-        { documentNumber: '87654321', role: 'recepcion' },
-        { documentNumber: '11111111', role: 'consultorio' },
-        { documentNumber: '22222222', role: 'enfermeria' },
-      ];
+      } catch (error) {
+        // Fallback to mock authentication for development
+        const mockUsers = [
+          { documentNumber: '12345678', role: 'empresa', name: 'Director General' },
+          { documentNumber: '87654321', role: 'recepcion', name: 'Ana García' },
+          { documentNumber: '11111111', role: 'consultorio', name: 'Dr. Carlos Mendez' },
+          { documentNumber: '22222222', role: 'enfermeria', name: 'Enf. María López' },
+        ];
 
-      const user = mockUsers.find(u => u.documentNumber === documentNumber);
-      if (user) {
-        const hasShownWelcome = sessionStorage.getItem('hasShownWelcome');
-        if (!hasShownWelcome) {
+        const user = mockUsers.find(u => u.documentNumber === documentNumber);
+        if (user) {
+          localStorage.setItem('user', JSON.stringify(user));
+          const hasShownWelcome = sessionStorage.getItem('hasShownWelcome');
+          if (!hasShownWelcome) {
+            setShowSuccessToast(true);
+            sessionStorage.setItem('hasShownWelcome', 'true');
+            setTimeout(() => {
+              setShowSuccessToast(false);
+              onLogin(user.role);
+            }, 2000);
+          } else {
+            onLogin(user.role);
+          }
+        } else {
+          setShowErrorModal(true);
+        }
+      }
+    } else {
+      // Lógica de registro
+      if (registerData.password !== registerData.confirmPassword) {
+        setError('Las contraseñas no coinciden');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`http://localhost:3000/api/auth/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(registerData),
+        });
+
+        if (response.ok) {
           setShowSuccessToast(true);
-          sessionStorage.setItem('hasShownWelcome', 'true');
           setTimeout(() => {
             setShowSuccessToast(false);
-            onLogin(user.role);
-          }, 7000);
+            setIsLogin(true);
+          }, 2000);
         } else {
-          onLogin(user.role);
+          const errorData = await response.json();
+          setError(errorData.message || 'Error en el registro');
         }
-      } else {
-        setShowErrorModal(true);
+      } catch (error) {
+        setError('Error de conexión');
       }
-    } finally {
-      setLoading(true);
     }
-  };
-
-  const quickLogin = (role: string, docNumber: string) => {
-    setDocumentNumber(docNumber);
-    const hasShownWelcome = sessionStorage.getItem('hasShownWelcome');
-    if (!hasShownWelcome) {
-      setShowSuccessToast(true);
-      sessionStorage.setItem('hasShownWelcome', 'true');
-      setTimeout(() => {
-        setShowSuccessToast(false);
-        onLogin(role);
-      }, 1000);
-    } else {
-      onLogin(role);
-    }
+    
+    setLoading(false);
   };
 
   return (
@@ -110,41 +143,128 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 <img 
                   src="/SAVISER copy.png" 
                   alt="SAVISER - Salud con calidad al servicio de todos" 
-                  className="h-80 w-auto"
+                  className="h-80 w-auto transform hover:scale-105 transition-transform duration-300"
                 />
               </div>
               
               {/* Main Slogan */}
-              <h2 className="text-4xl font-bold text-blue-900 leading-tight">
+              <h2 className="text-4xl font-bold text-blue-900 leading-tight animate-fade-in">
                 Servicio De Apoyo a La Vida <br />
-                  Del Ser Humano 
+                Del Ser Humano 
               </h2>
             </div>
           </div>
 
-          {/* Right Side - Login Form */}
+          {/* Right Side - Login/Register Form */}
           <div className="w-96">
-            <div className="bg-white rounded-2xl shadow-xl p-8">
+            <div className="bg-white rounded-2xl shadow-xl p-8 transform hover:shadow-2xl transition-all duration-300">
+              {/* Toggle Buttons */}
+              <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setIsLogin(true)}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-300 ${
+                    isLogin 
+                      ? 'bg-blue-600 text-white shadow-md transform scale-105' 
+                      : 'text-gray-600 hover:text-blue-600'
+                  }`}
+                >
+                  Iniciar Sesión
+                </button>
+                <button
+                  onClick={() => setIsLogin(false)}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-300 ${
+                    !isLogin 
+                      ? 'bg-green-600 text-white shadow-md transform scale-105' 
+                      : 'text-gray-600 hover:text-green-600'
+                  }`}
+                >
+                  Registrarse
+                </button>
+              </div>
+
               {/* User Icon */}
               <div className="text-center mb-6">
-                <div className="bg-blue-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <User className="w-8 h-8 text-blue-600" />
+                <div className={`p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center transition-all duration-300 transform hover:scale-110 ${
+                  isLogin ? 'bg-blue-100' : 'bg-green-100'
+                }`}>
+                  {isLogin ? (
+                    <User className={`w-8 h-8 ${isLogin ? 'text-blue-600' : 'text-green-600'}`} />
+                  ) : (
+                    <UserPlus className="w-8 h-8 text-green-600" />
+                  )}
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Identifícate</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  {isLogin ? 'Identifícate' : 'Crear Cuenta'}
+                </h2>
                 <p className="text-gray-600 text-sm">
-                  Selecciona tu tipo de documento para confirmar tu cuenta.
+                  {isLogin 
+                    ? 'Selecciona tu tipo de documento para confirmar tu cuenta.'
+                    : 'Completa los datos para crear tu cuenta.'
+                  }
                 </p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
+                {!isLogin && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nombre Completo*
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={registerData.name}
+                        onChange={(e) => setRegisterData({...registerData, name: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
+                        placeholder="Nombre completo"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email*
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={registerData.email}
+                        onChange={(e) => setRegisterData({...registerData, email: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
+                        placeholder="correo@ejemplo.com"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Rol*
+                      </label>
+                      <select
+                        value={registerData.role}
+                        onChange={(e) => setRegisterData({...registerData, role: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
+                      >
+                        <option value="recepcion">Recepción</option>
+                        <option value="enfermeria">Enfermería</option>
+                        <option value="consultorio">Consultorio</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Tipo de documento*
                   </label>
                   <select
-                    value={documentType}
-                    onChange={(e) => setDocumentType(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                    value={isLogin ? documentType : registerData.documentType}
+                    onChange={(e) => isLogin 
+                      ? setDocumentType(e.target.value)
+                      : setRegisterData({...registerData, documentType: e.target.value})
+                    }
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent bg-white text-gray-900 transition-all duration-300 ${
+                      isLogin ? 'focus:ring-blue-500' : 'focus:ring-green-500'
+                    }`}
                   >
                     <option value="cedula">Cédula de ciudadanía</option>
                     <option value="tarjeta">Tarjeta de identidad</option>
@@ -159,15 +279,55 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   <input
                     type="text"
                     required
-                    value={documentNumber}
-                    onChange={(e) => setDocumentNumber(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={isLogin ? documentNumber : registerData.documentNumber}
+                    onChange={(e) => isLogin 
+                      ? setDocumentNumber(e.target.value)
+                      : setRegisterData({...registerData, documentNumber: e.target.value})
+                    }
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent transition-all duration-300 ${
+                      isLogin ? 'focus:ring-blue-500' : 'focus:ring-green-500'
+                    }`}
                     placeholder="Número"
                   />
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Contraseña*
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={isLogin ? password : registerData.password}
+                    onChange={(e) => isLogin 
+                      ? setPassword(e.target.value)
+                      : setRegisterData({...registerData, password: e.target.value})
+                    }
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent transition-all duration-300 ${
+                      isLogin ? 'focus:ring-blue-500' : 'focus:ring-green-500'
+                    }`}
+                    placeholder="Contraseña"
+                  />
+                </div>
+
+                {!isLogin && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Confirmar Contraseña*
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={registerData.confirmPassword}
+                      onChange={(e) => setRegisterData({...registerData, confirmPassword: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
+                      placeholder="Confirmar contraseña"
+                    />
+                  </div>
+                )}
+
                 {error && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm animate-shake">
                     {error}
                   </div>
                 )}
@@ -175,51 +335,27 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-cyan-400 text-white py-3 px-4 rounded-lg hover:bg-cyan-500 focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  className={`w-full py-3 px-4 rounded-lg focus:ring-2 focus:ring-offset-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-medium transform hover:scale-105 active:scale-95 ${
+                    isLogin 
+                      ? 'bg-cyan-400 hover:bg-cyan-500 focus:ring-cyan-500 text-white' 
+                      : 'bg-green-500 hover:bg-green-600 focus:ring-green-500 text-white'
+                  }`}
                 >
-                  {loading ? 'Verificando...' : 'Continuar'}
+                  {loading ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>{isLogin ? 'Verificando...' : 'Registrando...'}</span>
+                    </div>
+                  ) : (
+                    isLogin ? 'Continuar' : 'Crear Cuenta'
+                  )}
                 </button>
               </form>
 
               {/* reCAPTCHA placeholder */}
               <div className="mt-6 flex justify-end">
-                <div className="bg-gray-100 border border-gray-300 rounded p-2 text-xs text-gray-500">
+                <div className="bg-gray-100 border border-gray-300 rounded p-2 text-xs text-gray-500 hover:bg-gray-200 transition-colors duration-300">
                   reCAPTCHA
-                </div>
-              </div>
-
-              {/* Quick Access for Testing */}
-              <div className="mt-8 pt-6 border-t border-gray-200">
-                <p className="text-sm text-gray-600 mb-4 text-center">Acceso rápido para pruebas:</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => quickLogin('empresa', '12345678')}
-                    className="p-3 text-sm bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors"
-                  >
-                    <div className="font-medium">Empresa</div>
-                    <div className="text-xs opacity-75">12345678</div>
-                  </button>
-                  <button
-                    onClick={() => quickLogin('recepcion', '87654321')}
-                    className="p-3 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
-                  >
-                    <div className="font-medium">Recepción</div>
-                    <div className="text-xs opacity-75">87654321</div>
-                  </button>
-                  <button
-                    onClick={() => quickLogin('consultorio', '11111111')}
-                    className="p-3 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
-                  >
-                    <div className="font-medium">Consultorio</div>
-                    <div className="text-xs opacity-75">11111111</div>
-                  </button>
-                  <button
-                    onClick={() => quickLogin('enfermeria', '22222222')}
-                    className="p-3 text-sm bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
-                  >
-                    <div className="font-medium">Enfermería</div>
-                    <div className="text-xs opacity-75">22222222</div>
-                  </button>
                 </div>
               </div>
             </div>
@@ -249,8 +385,29 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       <SuccessToast
         isOpen={showSuccessToast}
         onClose={() => setShowSuccessToast(false)}
-        message="¡Bienvenido! Has iniciado sesión exitosamente"
+        message={isLogin ? "¡Bienvenido! Has iniciado sesión exitosamente" : "¡Cuenta creada exitosamente! Ahora puedes iniciar sesión"}
       />
+
+      <style jsx>{`
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+        
+        .animate-fade-in {
+          animation: fade-in 1s ease-out;
+        }
+        
+        .animate-shake {
+          animation: shake 0.5s ease-in-out;
+        }
+      `}</style>
     </div>
   );
 };

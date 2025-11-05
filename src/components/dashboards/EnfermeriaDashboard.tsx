@@ -263,23 +263,16 @@ const EnfermeriaDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
+      <div className="bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <img 
-                src="/SAVISER copy.png" 
-                alt="SAVISER - Salud con calidad al servicio de todos" 
-                className="h-10 w-auto"
-              />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Enfermería - Triaje</h1>
-                <p className="text-gray-600">Evaluación y clasificación de pacientes</p>
-              </div>
+            <div>
+              <h1 className="text-3xl font-bold text-red-900 animate-fade-in">Enfermería - Triaje</h1>
+              <p className="text-red-700">Evaluación y clasificación de pacientes</p>
             </div>
             
             {/* Search Patient */}
-            <div className="flex items-center space-x-3">
+            {/* <div className="flex items-center space-x-3">
               <div className="flex items-center space-x-2">
                 <input
                   type="text"
@@ -297,7 +290,7 @@ const EnfermeriaDashboard: React.FC = () => {
                   <span>Buscar</span>
                 </button>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

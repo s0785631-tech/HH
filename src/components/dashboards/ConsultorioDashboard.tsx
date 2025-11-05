@@ -234,27 +234,20 @@ const ConsultorioDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
+      <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <img 
-                src="/SAVISER copy.png" 
-                alt="SAVISER - Salud con calidad al servicio de todos" 
-                className="h-10 w-auto"
-              />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Consultorio Médico</h1>
-                <p className="text-gray-600">Atención médica y seguimiento</p>
-              </div>
+            <div>
+              <h1 className="text-3xl font-bold text-blue-900 animate-fade-in">Consultorio Médico</h1>
+              <p className="text-blue-700">Atención médica y seguimiento</p>
             </div>
-            <button
+            {/* <button
               onClick={() => setShowNewConsultation(true)}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
             >
               <Plus className="w-4 h-4" />
               <span>Nueva Consulta</span>
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
