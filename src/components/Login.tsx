@@ -81,7 +81,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-6xl flex items-center justify-between">
           {/* Left Side - Branding */}
-          <div className="flex-1 pr-16">
+          <div className="flex-1 pr-200">
             {/* Logo */}
             <div className="mb-12">
               <div className="flex items-center space-x-3 mb-8">
