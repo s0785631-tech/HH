@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Users, Clock, Phone, UserPlus, Search, CheckCircle, XCircle, AlertCircle, CreditCard as Edit, Eye, Plus } from 'lucide-react';
+import ErrorModal from '../ErrorModal';
+import SuccessToast from '../SuccessToast';
 
 interface Patient {
   _id: string;
@@ -28,6 +30,17 @@ const RecepcionDashboard: React.FC = () => {
   const [showNewAppointment, setShowNewAppointment] = useState(false);
   const [showNewPatient, setShowNewPatient] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  // Estados para notificaciones
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  
+  // Estados para búsqueda de paciente en nueva cita
+  const [searchCedulaCita, setSearchCedulaCita] = useState('');
+  const [foundPatient, setFoundPatient] = useState<Patient | null>(null);
+  const [searchingPatient, setSearchingPatient] = useState(false);
 
   const [newAppointment, setNewAppointment] = useState({
     pacienteId: '',
@@ -100,6 +113,50 @@ const RecepcionDashboard: React.FC = () => {
     }
   };
 
+  const searchPatientByCedula = async () => {
+    if (!searchCedulaCita.trim()) {
+      setErrorMessage('Por favor ingrese un número de identificación');
+      setShowErrorModal(true);
+      return;
+    }
+
+    setSearchingPatient(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/patients/search/${searchCedulaCita}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.length > 0) {
+          setFoundPatient(data[0]);
+          setNewAppointment({...newAppointment, pacienteId: data[0]._id});
+        } else {
+          setFoundPatient(null);
+          setNewAppointment({...newAppointment, pacienteId: ''});
+          setErrorMessage('No se encontró ningún paciente con ese número de identificación');
+          setShowErrorModal(true);
+        }
+      } else {
+        setFoundPatient(null);
+        setNewAppointment({...newAppointment, pacienteId: ''});
+        setErrorMessage('Error al buscar el paciente. Intente nuevamente.');
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error('Error searching patient:', error);
+      setFoundPatient(null);
+      setNewAppointment({...newAppointment, pacienteId: ''});
+      setErrorMessage('Error de conexión. Verifique su conexión a internet.');
+      setShowErrorModal(true);
+    } finally {
+      setSearchingPatient(false);
+    }
+  };
+
   const getStatusColor = (estado: string) => {
     switch (estado) {
       case 'programada': return 'bg-blue-100 text-blue-800';
@@ -145,6 +202,13 @@ const RecepcionDashboard: React.FC = () => {
 
   const handleCreateAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!foundPatient) {
+      setErrorMessage('Debe buscar y seleccionar un paciente válido antes de crear la cita');
+      setShowErrorModal(true);
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/appointments`, {
@@ -159,6 +223,8 @@ const RecepcionDashboard: React.FC = () => {
       if (response.ok) {
         fetchAppointments();
         setShowNewAppointment(false);
+        setFoundPatient(null);
+        setSearchCedulaCita('');
         setNewAppointment({
           pacienteId: '',
           medicoId: '',
@@ -166,9 +232,18 @@ const RecepcionDashboard: React.FC = () => {
           hora: '',
           motivo: ''
         });
+        
+        // Mostrar notificación de éxito
+        setSuccessMessage('¡Cita creada exitosamente!');
+        setShowSuccessToast(true);
+      } else {
+        setErrorMessage('Error al crear la cita. Intente nuevamente.');
+        setShowErrorModal(true);
       }
     } catch (error) {
       console.error('Error creating appointment:', error);
+      setErrorMessage('Error de conexión. Verifique su conexión a internet.');
+      setShowErrorModal(true);
     }
   };
 
@@ -203,10 +278,33 @@ const RecepcionDashboard: React.FC = () => {
             relacion: ''
           }
         });
+        
+        // Mostrar notificación de éxito
+        setSuccessMessage('¡Paciente registrado exitosamente!');
+        setShowSuccessToast(true);
+      } else {
+        const errorData = await response.json();
+        setErrorMessage(errorData.message || 'Error al crear el paciente');
+        setShowErrorModal(true);
       }
     } catch (error) {
       console.error('Error creating patient:', error);
+      setErrorMessage('Error de conexión. Verifique su conexión a internet.');
+      setShowErrorModal(true);
     }
+  };
+
+  const handleOpenNewAppointment = () => {
+    setShowNewAppointment(true);
+    setFoundPatient(null);
+    setSearchCedulaCita('');
+    setNewAppointment({
+      pacienteId: '',
+      medicoId: '',
+      fecha: new Date().toISOString().split('T')[0],
+      hora: '',
+      motivo: ''
+    });
   };
 
   const filteredPatients = patients.filter(patient =>
@@ -248,7 +346,7 @@ const RecepcionDashboard: React.FC = () => {
                 <span>Nuevo Paciente</span>
               </button>
               <button
-                onClick={() => setShowNewAppointment(true)}
+                onClick={handleOpenNewAppointment}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
               >
                 <Plus className="w-4 h-4" />
@@ -434,25 +532,50 @@ const RecepcionDashboard: React.FC = () => {
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900">Nueva Cita</h2>
+              <p className="text-sm text-gray-600">Primero busque el paciente por su número de identificación</p>
             </div>
             
             <form onSubmit={handleCreateAppointment} className="p-6 space-y-4">
+              {/* Búsqueda de paciente */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Paciente</label>
-                <select
-                  required
-                  value={newAppointment.pacienteId}
-                  onChange={(e) => setNewAppointment({...newAppointment, pacienteId: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Seleccionar paciente</option>
-                  {patients.map(patient => (
-                    <option key={patient._id} value={patient._id}>
-                      {patient.nombre} {patient.apellido} - {patient.cedula}
-                    </option>
-                  ))}
-                </select>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Número de Identificación del Paciente
+                </label>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={searchCedulaCita}
+                    onChange={(e) => setSearchCedulaCita(e.target.value)}
+                    placeholder="Ingrese cédula o documento"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), searchPatientByCedula())}
+                  />
+                  <button
+                    type="button"
+                    onClick={searchPatientByCedula}
+                    disabled={searchingPatient}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    <Search className="w-4 h-4" />
+                    <span>{searchingPatient ? 'Buscando...' : 'Buscar'}</span>
+                  </button>
+                </div>
               </div>
+
+              {/* Información del paciente encontrado */}
+              {foundPatient && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    <span className="text-sm font-medium text-green-800">Paciente encontrado</span>
+                  </div>
+                  <div className="text-sm text-green-700">
+                    <p className="font-medium">{foundPatient.nombre} {foundPatient.apellido}</p>
+                    <p>C.I: {foundPatient.cedula}</p>
+                    <p>Teléfono: {foundPatient.telefono}</p>
+                  </div>
+                </div>
+              )}
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -499,7 +622,8 @@ const RecepcionDashboard: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  disabled={!foundPatient}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Crear Cita
                 </button>
@@ -679,6 +803,22 @@ const RecepcionDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="¡Ups, algo salió mal!"
+        message={errorMessage}
+        buttonText="Aceptar"
+      />
+
+      {/* Success Toast */}
+      <SuccessToast
+        isOpen={showSuccessToast}
+        onClose={() => setShowSuccessToast(false)}
+        message={successMessage}
+      />
     </div>
   );
 };
