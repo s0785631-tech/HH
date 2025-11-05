@@ -79,7 +79,7 @@ const ConsultorioDashboard: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       const today = new Date().toISOString().split('T')[0];
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/consultations?fecha=${today}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/consultations?fecha=${today}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -101,7 +101,7 @@ const ConsultorioDashboard: React.FC = () => {
   const fetchPatients = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/patients`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/patients`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -121,7 +121,7 @@ const ConsultorioDashboard: React.FC = () => {
   const fetchPendingTriages = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/consultations/pending-triages`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/consultations/pending-triages`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -142,7 +142,7 @@ const ConsultorioDashboard: React.FC = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/consultations`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/consultations`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

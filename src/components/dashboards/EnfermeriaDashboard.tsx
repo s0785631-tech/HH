@@ -71,7 +71,7 @@ const EnfermeriaDashboard: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       const today = new Date().toISOString().split('T')[0];
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/triage?fecha=${today}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/triage?fecha=${today}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -94,7 +94,7 @@ const EnfermeriaDashboard: React.FC = () => {
   const fetchPatients = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/patients`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/patients`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -117,7 +117,7 @@ const EnfermeriaDashboard: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/patients/search/${searchCedula}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/patients/search/${searchCedula}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -189,7 +189,7 @@ const EnfermeriaDashboard: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/triage`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/triage`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -224,7 +224,7 @@ const EnfermeriaDashboard: React.FC = () => {
   const actualizarEstado = async (id: string, nuevoEstado: 'pendiente' | 'en_proceso' | 'completado') => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/triage/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/triage/${id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

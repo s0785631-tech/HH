@@ -103,7 +103,7 @@ const RecepcionDashboard: React.FC = () => {
   const fetchAppointments = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/appointments?fecha=${selectedDate}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/appointments?fecha=${selectedDate}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -125,7 +125,7 @@ const RecepcionDashboard: React.FC = () => {
   const fetchPatients = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/patients`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/patients`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -145,7 +145,7 @@ const RecepcionDashboard: React.FC = () => {
   const fetchDoctors = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/doctors`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/doctors`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -166,7 +166,7 @@ const RecepcionDashboard: React.FC = () => {
   const fetchAvailableHours = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/doctors/${newAppointment.medicoId}/horarios/${newAppointment.fecha}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/doctors/${newAppointment.medicoId}/horarios/${newAppointment.fecha}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -215,7 +215,7 @@ const RecepcionDashboard: React.FC = () => {
     setSearchingPatient(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/patients/search/${searchCedulaCita}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/patients/search/${searchCedulaCita}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -273,7 +273,7 @@ const RecepcionDashboard: React.FC = () => {
   const updateAppointmentStatus = async (appointmentId: string, newStatus: string) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/appointments/${appointmentId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/appointments/${appointmentId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -308,7 +308,7 @@ const RecepcionDashboard: React.FC = () => {
         medicoId: newAppointment.medicoId // Ahora es el ID del doctor
       };
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/appointments`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/appointments`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -349,7 +349,7 @@ const RecepcionDashboard: React.FC = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/patients`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/patients`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
