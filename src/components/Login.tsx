@@ -94,8 +94,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               
               {/* Main Slogan */}
               <h2 className="text-4xl font-bold text-blue-900 leading-tight">
-                TU OFICINA DE ATENCIÓN<br />
-                SIN SALIR DE CASA
+                Servicio De Apoyo a La Vida <br />
+                  Del Ser Humano 
               </h2>
             </div>
           </div>
