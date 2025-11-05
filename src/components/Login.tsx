@@ -41,13 +41,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         if (!hasShownWelcome) {
           setShowSuccessToast(true);
           sessionStorage.setItem('hasShownWelcome', 'true');
-          
-          // Inicia sesión inmediatamente
-          onLogin(data.user.role);
-
-          // Oculta el toast después del tiempo
           setTimeout(() => {
             setShowSuccessToast(false);
+            onLogin(data.user.role);
           }, 7000);
         } else {
           onLogin(data.user.role);
@@ -71,13 +67,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         if (!hasShownWelcome) {
           setShowSuccessToast(true);
           sessionStorage.setItem('hasShownWelcome', 'true');
-
-          // Inicia sesión inmediatamente
-          onLogin(user.role);
-
-          // Oculta el toast después del tiempo
           setTimeout(() => {
             setShowSuccessToast(false);
+            onLogin(user.role);
           }, 7000);
         } else {
           onLogin(user.role);
@@ -96,14 +88,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     if (!hasShownWelcome) {
       setShowSuccessToast(true);
       sessionStorage.setItem('hasShownWelcome', 'true');
-
-      // Inicia sesión inmediatamente
-      onLogin(role);
-
-      // Oculta el toast después del tiempo
       setTimeout(() => {
         setShowSuccessToast(false);
-      }, 7000);
+        onLogin(role);
+      }, 3500);
     } else {
       onLogin(role);
     }
