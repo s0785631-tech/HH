@@ -12,7 +12,7 @@ const SuccessToast: React.FC<SuccessToastProps> = ({
   isOpen,
   onClose,
   message = "¡Bienvenido! Has iniciado sesión exitosamente",
-  duration = 3000
+  duration = 5000
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [progress, setProgress] = useState(100);
