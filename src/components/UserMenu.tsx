@@ -20,9 +20,10 @@ import {
 interface UserMenuProps {
   userRole: string;
   onLogout: () => void;
+  onMenuAction: (action: string, data?: any) => void;
 }
 
-const UserMenu: React.FC<UserMenuProps> = ({ userRole, onLogout }) => {
+const UserMenu: React.FC<UserMenuProps> = ({ userRole, onLogout, onMenuAction }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -69,17 +70,17 @@ const UserMenu: React.FC<UserMenuProps> = ({ userRole, onLogout }) => {
             title: 'Gestión',
             icon: Building2,
             items: [
-              { title: 'Nuevo Doctor', icon: UserPlus, action: () => console.log('Nuevo Doctor') },
-              { title: 'Gestión de Doctores', icon: Stethoscope, action: () => console.log('Gestión Doctores') },
-              { title: 'Configuración', icon: Settings, action: () => console.log('Configuración') }
+              { title: 'Nuevo Doctor', icon: UserPlus, action: () => onMenuAction('nuevo-doctor') },
+              { title: 'Gestión de Doctores', icon: Stethoscope, action: () => onMenuAction('gestion-doctores') },
+              { title: 'Configuración', icon: Settings, action: () => onMenuAction('configuracion') }
             ]
           },
           {
             title: 'Reportes',
             icon: BarChart3,
             items: [
-              { title: 'Estadísticas', icon: BarChart3, action: () => console.log('Estadísticas') },
-              { title: 'Generar Reporte', icon: FileText, action: () => console.log('Generar Reporte') }
+              { title: 'Estadísticas', icon: BarChart3, action: () => onMenuAction('estadisticas') },
+              { title: 'Generar Reporte', icon: FileText, action: () => onMenuAction('generar-reporte') }
             ]
           }
         ];
@@ -89,16 +90,16 @@ const UserMenu: React.FC<UserMenuProps> = ({ userRole, onLogout }) => {
             title: 'Pacientes',
             icon: Users,
             items: [
-              { title: 'Nuevo Paciente', icon: UserPlus, action: () => console.log('Nuevo Paciente') },
-              { title: 'Buscar Pacientes', icon: Users, action: () => console.log('Buscar Pacientes') }
+              { title: 'Nuevo Paciente', icon: UserPlus, action: () => onMenuAction('nuevo-paciente') },
+              { title: 'Buscar Pacientes', icon: Users, action: () => onMenuAction('buscar-pacientes') }
             ]
           },
           {
             title: 'Citas',
             icon: Calendar,
             items: [
-              { title: 'Nueva Cita', icon: Calendar, action: () => console.log('Nueva Cita') },
-              { title: 'Gestionar Citas', icon: Clock, action: () => console.log('Gestionar Citas') }
+              { title: 'Nueva Cita', icon: Calendar, action: () => onMenuAction('nueva-cita') },
+              { title: 'Gestionar Citas', icon: Clock, action: () => onMenuAction('gestionar-citas') }
             ]
           }
         ];
@@ -108,9 +109,9 @@ const UserMenu: React.FC<UserMenuProps> = ({ userRole, onLogout }) => {
             title: 'Consultas',
             icon: Stethoscope,
             items: [
-              { title: 'Nueva Consulta', icon: Stethoscope, action: () => console.log('Nueva Consulta') },
-              { title: 'Triajes Pendientes', icon: Activity, action: () => console.log('Triajes Pendientes') },
-              { title: 'Historial', icon: FileText, action: () => console.log('Historial') }
+              { title: 'Nueva Consulta', icon: Stethoscope, action: () => onMenuAction('nueva-consulta') },
+              { title: 'Triajes Pendientes', icon: Activity, action: () => onMenuAction('triajes-pendientes') },
+              { title: 'Historial', icon: FileText, action: () => onMenuAction('historial-consultas') }
             ]
           }
         ];
@@ -120,8 +121,8 @@ const UserMenu: React.FC<UserMenuProps> = ({ userRole, onLogout }) => {
             title: 'Triaje',
             icon: Shield,
             items: [
-              { title: 'Nuevo Triaje', icon: Heart, action: () => console.log('Nuevo Triaje') },
-              { title: 'Triajes del Día', icon: Activity, action: () => console.log('Triajes del Día') }
+              { title: 'Nuevo Triaje', icon: Heart, action: () => onMenuAction('nuevo-triaje') },
+              { title: 'Triajes del Día', icon: Activity, action: () => onMenuAction('triajes-dia') }
             ]
           }
         ];
@@ -201,7 +202,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ userRole, onLogout }) => {
             {/* Profile and Logout */}
             <div className="border-t border-gray-200 mt-2 pt-2">
               <button
-                onClick={() => console.log('Ver perfil')}
+                onClick={() => onMenuAction('ver-perfil')}
                 className="w-full px-4 py-3 flex items-center space-x-3 hover:bg-gray-50 transition-colors duration-200"
               >
                 <Settings className="w-5 h-5 text-gray-600" />

@@ -60,7 +60,7 @@ const EmpresaDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [showNewDoctor, setShowNewDoctor] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'doctors'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'doctors' | 'estadisticas' | 'reportes' | 'configuracion'>('overview');
 
   const [newDoctor, setNewDoctor] = useState({
     nombre: '',
@@ -89,6 +89,31 @@ const EmpresaDashboard: React.FC = () => {
   useEffect(() => {
     fetchDashboardStats();
     fetchDoctors();
+    
+    // Escuchar acciones del menú
+    const handleMenuAction = (event: any) => {
+      const { action } = event.detail;
+      switch (action) {
+        case 'nuevo-doctor':
+          setShowNewDoctor(true);
+          break;
+        case 'gestion-doctores':
+          setActiveTab('doctors');
+          break;
+        case 'estadisticas':
+          setActiveTab('estadisticas');
+          break;
+        case 'generar-reporte':
+          setActiveTab('reportes');
+          break;
+        case 'configuracion':
+          setActiveTab('configuracion');
+          break;
+      }
+    };
+
+    window.addEventListener('menuAction', handleMenuAction);
+    return () => window.removeEventListener('menuAction', handleMenuAction);
   }, []);
 
   const fetchDashboardStats = async () => {
@@ -366,6 +391,36 @@ const EmpresaDashboard: React.FC = () => {
                 >
                   Gestión de Doctores ({doctors.length})
                 </button>
+                <button
+                  onClick={() => setActiveTab('estadisticas')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'estadisticas'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Estadísticas
+                </button>
+                <button
+                  onClick={() => setActiveTab('reportes')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'reportes'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Reportes
+                </button>
+                <button
+                  onClick={() => setActiveTab('configuracion')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'configuracion'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Configuración
+                </button>
               </nav>
             </div>
           </div>
@@ -544,6 +599,437 @@ const EmpresaDashboard: React.FC = () => {
                       <p className="text-gray-600">Agrega el primer doctor para comenzar</p>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'estadisticas' && (
+            <div className="lg:col-span-3">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-900">Estadísticas Detalladas</h2>
+                </div>
+                
+                <div className="p-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Gráfico de Citas por Mes */}
+                    <div className="bg-gray-50 p-6 rounded-lg">
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">Citas por Mes</h3>
+                      <div className="space-y-3">
+                        {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio'].map((mes, index) => (
+                          <div key={mes} className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">{mes}</span>
+                            <div className="flex items-center space-x-3">
+                              <div className="w-32 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full" 
+                                  style={{ width: `${Math.random() * 100}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-medium text-gray-900">
+                                {Math.floor(Math.random() * 200) + 50}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Estadísticas por Doctor */}
+                    <div className="bg-gray-50 p-6 rounded-lg">
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">Consultas por Doctor</h3>
+                      <div className="space-y-3">
+                        {doctors.slice(0, 5).map((doctor, index) => (
+                          <div key={doctor._id} className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">
+                              Dr. {doctor.nombre} {doctor.apellido}
+                            </span>
+                            <div className="flex items-center space-x-3">
+                              <div className="w-24 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-green-600 h-2 rounded-full" 
+                                  style={{ width: `${Math.random() * 100}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-medium text-gray-900">
+                                {Math.floor(Math.random() * 50) + 10}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Ingresos Mensuales */}
+                    <div className="bg-gray-50 p-6 rounded-lg">
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">Ingresos Mensuales</h3>
+                      <div className="text-3xl font-bold text-green-600 mb-2">$125,430</div>
+                      <div className="text-sm text-gray-600 mb-4">+18% vs mes anterior</div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Consultas</span>
+                          <span className="font-medium">$89,200</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Procedimientos</span>
+                          <span className="font-medium">$36,230</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Satisfacción del Cliente */}
+                    <div className="bg-gray-50 p-6 rounded-lg">
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">Satisfacción del Cliente</h3>
+                      <div className="text-center">
+                        <div className="text-4xl font-bold text-blue-600 mb-2">4.8</div>
+                        <div className="text-sm text-gray-600 mb-4">de 5 estrellas</div>
+                        <div className="space-y-1">
+                          {[5, 4, 3, 2, 1].map((stars) => (
+                            <div key={stars} className="flex items-center space-x-2">
+                              <span className="text-sm text-gray-600 w-8">{stars}★</span>
+                              <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-yellow-500 h-2 rounded-full" 
+                                  style={{ width: `${stars === 5 ? 75 : stars === 4 ? 20 : 5}%` }}
+                                />
+                              </div>
+                              <span className="text-sm text-gray-600 w-8">
+                                {stars === 5 ? '75%' : stars === 4 ? '20%' : '5%'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'reportes' && (
+            <div className="lg:col-span-3">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-900">Generar Reportes</h2>
+                </div>
+                
+                <div className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* Reporte de Citas */}
+                    <div className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <Calendar className="w-8 h-8 text-blue-600" />
+                        <h3 className="text-lg font-medium text-gray-900">Reporte de Citas</h3>
+                      </div>
+                      <p className="text-gray-600 text-sm mb-4">
+                        Generar reporte detallado de todas las citas programadas, confirmadas y completadas.
+                      </p>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Período</label>
+                          <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option>Último mes</option>
+                            <option>Últimos 3 meses</option>
+                            <option>Último año</option>
+                            <option>Personalizado</option>
+                          </select>
+                        </div>
+                        <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                          Generar Reporte
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Reporte Financiero */}
+                    <div className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <DollarSign className="w-8 h-8 text-green-600" />
+                        <h3 className="text-lg font-medium text-gray-900">Reporte Financiero</h3>
+                      </div>
+                      <p className="text-gray-600 text-sm mb-4">
+                        Análisis detallado de ingresos, gastos y rentabilidad del centro médico.
+                      </p>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                          <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option>Ingresos por servicios</option>
+                            <option>Gastos operativos</option>
+                            <option>Rentabilidad</option>
+                            <option>Completo</option>
+                          </select>
+                        </div>
+                        <button className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm">
+                          Generar Reporte
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Reporte de Doctores */}
+                    <div className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <Stethoscope className="w-8 h-8 text-purple-600" />
+                        <h3 className="text-lg font-medium text-gray-900">Reporte de Doctores</h3>
+                      </div>
+                      <p className="text-gray-600 text-sm mb-4">
+                        Rendimiento y estadísticas de cada doctor del centro médico.
+                      </p>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Doctor</label>
+                          <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option>Todos los doctores</option>
+                            {doctors.map(doctor => (
+                              <option key={doctor._id}>
+                                Dr. {doctor.nombre} {doctor.apellido}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <button className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors text-sm">
+                          Generar Reporte
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Reporte de Pacientes */}
+                    <div className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <Users className="w-8 h-8 text-indigo-600" />
+                        <h3 className="text-lg font-medium text-gray-900">Reporte de Pacientes</h3>
+                      </div>
+                      <p className="text-gray-600 text-sm mb-4">
+                        Estadísticas y análisis de la base de pacientes registrados.
+                      </p>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Criterio</label>
+                          <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option>Nuevos pacientes</option>
+                            <option>Pacientes frecuentes</option>
+                            <option>Por edad</option>
+                            <option>Por género</option>
+                          </select>
+                        </div>
+                        <button className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors text-sm">
+                          Generar Reporte
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Reporte de Satisfacción */}
+                    <div className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <TrendingUp className="w-8 h-8 text-yellow-600" />
+                        <h3 className="text-lg font-medium text-gray-900">Satisfacción</h3>
+                      </div>
+                      <p className="text-gray-600 text-sm mb-4">
+                        Análisis de satisfacción y feedback de los pacientes.
+                      </p>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Métrica</label>
+                          <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option>Calificación general</option>
+                            <option>Por servicio</option>
+                            <option>Por doctor</option>
+                            <option>Comentarios</option>
+                          </select>
+                        </div>
+                        <button className="w-full bg-yellow-600 text-white py-2 px-4 rounded-lg hover:bg-yellow-700 transition-colors text-sm">
+                          Generar Reporte
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Reporte Personalizado */}
+                    <div className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <FileText className="w-8 h-8 text-gray-600" />
+                        <h3 className="text-lg font-medium text-gray-900">Personalizado</h3>
+                      </div>
+                      <p className="text-gray-600 text-sm mb-4">
+                        Crear un reporte personalizado con métricas específicas.
+                      </p>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Formato</label>
+                          <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option>PDF</option>
+                            <option>Excel</option>
+                            <option>CSV</option>
+                          </select>
+                        </div>
+                        <button className="w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors text-sm">
+                          Configurar Reporte
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'configuracion' && (
+            <div className="lg:col-span-3">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-900">Configuración del Sistema</h2>
+                </div>
+                
+                <div className="p-6">
+                  <div className="space-y-8">
+                    {/* Configuración General */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">Configuración General</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Nombre del Centro Médico
+                          </label>
+                          <input
+                            type="text"
+                            defaultValue="SAVISER - Centro Médico"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Teléfono Principal
+                          </label>
+                          <input
+                            type="tel"
+                            defaultValue="+57 (1) 234-5678"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Dirección
+                          </label>
+                          <textarea
+                            rows={2}
+                            defaultValue="Calle 123 #45-67, Bogotá, Colombia"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Horarios de Atención */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">Horarios de Atención</h3>
+                      <div className="space-y-3">
+                        {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((dia) => (
+                          <div key={dia} className="flex items-center space-x-4">
+                            <div className="w-20">
+                              <span className="text-sm font-medium text-gray-700">{dia}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                defaultChecked={dia !== 'Domingo'}
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <span className="text-sm text-gray-600">Activo</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="time"
+                                defaultValue="08:00"
+                                className="px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                              <span className="text-gray-500">-</span>
+                              <input
+                                type="time"
+                                defaultValue={dia === 'Sábado' ? '12:00' : '17:00'}
+                                className="px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Configuración de Citas */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">Configuración de Citas</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Duración por Cita (minutos)
+                          </label>
+                          <select className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="15">15 minutos</option>
+                            <option value="30" selected>30 minutos</option>
+                            <option value="45">45 minutos</option>
+                            <option value="60">60 minutos</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Días de Anticipación
+                          </label>
+                          <input
+                            type="number"
+                            defaultValue="30"
+                            min="1"
+                            max="90"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Recordatorios
+                          </label>
+                          <select className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option>24 horas antes</option>
+                            <option>12 horas antes</option>
+                            <option>2 horas antes</option>
+                            <option>Desactivado</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Configuración de Usuarios */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">Gestión de Usuarios</h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                          <div>
+                            <h4 className="font-medium text-gray-900">Roles y Permisos</h4>
+                            <p className="text-sm text-gray-600">Configurar permisos para cada rol del sistema</p>
+                          </div>
+                          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            Configurar
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                          <div>
+                            <h4 className="font-medium text-gray-900">Seguridad</h4>
+                            <p className="text-sm text-gray-600">Políticas de contraseñas y autenticación</p>
+                          </div>
+                          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            Configurar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Botones de Acción */}
+                    <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+                      <button className="px-6 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                        Cancelar
+                      </button>
+                      <button className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Guardar Cambios
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

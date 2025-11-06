@@ -96,7 +96,15 @@ function App() {
                   Sistema de Gestión Médica
                 </span>
               </div>
-              <UserMenu userRole={userRole} onLogout={handleLogout} />
+              <UserMenu 
+                userRole={userRole} 
+                onLogout={handleLogout}
+                onMenuAction={(action, data) => {
+                  // Pasar la acción al dashboard correspondiente
+                  const event = new CustomEvent('menuAction', { detail: { action, data } });
+                  window.dispatchEvent(event);
+                }}
+              />
             </div>
           </div>
         </div>
