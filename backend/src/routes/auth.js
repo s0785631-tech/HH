@@ -8,23 +8,51 @@ const router = express.Router();
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { documentType, documentNumber } = req.body;
+    const { documentType, documentNumber, password } = req.body;
 
-    // For development, use mock authentication
+    // First, try to find user in database
+    const dbUser = await User.findOne({ email: documentNumber });
+
+    if (dbUser) {
+      // User exists in database, validate password
+      const isValidPassword = await bcrypt.compare(password, dbUser.password);
+
+      if (!isValidPassword) {
+        return res.status(401).json({ message: 'Credenciales inválidas' });
+      }
+
+      const token = jwt.sign(
+        { userId: dbUser._id, role: dbUser.role },
+        process.env.JWT_SECRET || 'secret',
+        { expiresIn: '8h' }
+      );
+
+      return res.json({
+        token,
+        user: {
+          id: dbUser._id,
+          name: dbUser.name,
+          role: dbUser.role
+        }
+      });
+    }
+
+    // If not in database, check mock users (for development)
     const mockUsers = [
-      { documentNumber: '12345678', role: 'empresa', name: 'Director General' },
-      { documentNumber: '87654321', role: 'recepcion', name: 'Ana García' },
-      { documentNumber: '11111111', role: 'consultorio', name: 'Dr. Carlos Mendez' },
-      { documentNumber: '22222222', role: 'enfermeria', name: 'Enf. María López' },
+      { documentNumber: '12345678', password: '12345678', role: 'empresa', name: 'Director General' },
+      { documentNumber: '87654321', password: '87654321', role: 'recepcion', name: 'Ana García' },
+      { documentNumber: '11111111', password: '11111111', role: 'consultorio', name: 'Dr. Carlos Mendez' },
+      { documentNumber: '22222222', password: '22222222', role: 'enfermeria', name: 'Enf. María López' },
     ];
 
-    const user = mockUsers.find(u => u.documentNumber === documentNumber);
-    if (!user) {
-      return res.status(401).json({ message: 'Documento no encontrado' });
+    const mockUser = mockUsers.find(u => u.documentNumber === documentNumber && u.password === password);
+
+    if (!mockUser) {
+      return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
     const token = jwt.sign(
-      { userId: user.documentNumber, role: user.role },
+      { userId: mockUser.documentNumber, role: mockUser.role },
       process.env.JWT_SECRET || 'secret',
       { expiresIn: '8h' }
     );
@@ -32,12 +60,13 @@ router.post('/login', async (req, res) => {
     res.json({
       token,
       user: {
-        id: user.documentNumber,
-        name: user.name,
-        role: user.role
+        id: mockUser.documentNumber,
+        name: mockUser.name,
+        role: mockUser.role
       }
     });
   } catch (error) {
+    console.error('Error en login:', error);
     res.status(500).json({ message: 'Error del servidor' });
   }
 });
