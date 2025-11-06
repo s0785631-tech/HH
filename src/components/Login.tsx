@@ -333,7 +333,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         isOpen={showErrorModal}
         onClose={() => setShowErrorModal(false)}
         title="¡Ups, parece que algo salió mal!"
-        message="Las credenciales proporcionadas no son válidas"
+        message={error || "Las credenciales proporcionadas no son válidas"}
         buttonText="Aceptar"
       />
 
