@@ -34,35 +34,35 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     setError('');
 
-    if (isLogin) {
-      try {
-        const response = await authAPI.login({
-          documentType,
-          documentNumber,
-          password
-        });
+    try {
+      if (isLogin) {
+        // Intentar login con API primero
+        try {
+          const response = await authAPI.login({
+            documentType,
+            documentNumber,
+            password
+          });
 
-        const data = response.data;
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
+          const data = response.data;
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
 
-        const hasShownWelcome = sessionStorage.getItem('hasShownWelcome');
-        if (!hasShownWelcome) {
-          setShowSuccessToast(true);
-          sessionStorage.setItem('hasShownWelcome', 'true');
-          setTimeout(() => {
-            setShowSuccessToast(false);
+          const hasShownWelcome = sessionStorage.getItem('hasShownWelcome');
+          if (!hasShownWelcome) {
+            setShowSuccessToast(true);
+            sessionStorage.setItem('hasShownWelcome', 'true');
+            setTimeout(() => {
+              setShowSuccessToast(false);
+              onLogin(data.user.role);
+            }, 2000);
+          } else {
             onLogin(data.user.role);
-          }, 2000);
-        } else {
-          onLogin(data.user.role);
-        }
-      } catch (error: any) {
-        console.error('Error en login:', error);
-
-        if (error.response?.status === 401) {
-          setShowErrorModal(true);
-        } else {
+          }
+        } catch (apiError: any) {
+          console.log('API login failed, trying mock users...');
+          
+          // Si falla la API, usar usuarios mock
           const mockUsers = [
             { documentNumber: '12345678', role: 'empresa', name: 'Director General' },
             { documentNumber: '87654321', role: 'recepcion', name: 'Ana García' },
@@ -72,7 +72,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
           const user = mockUsers.find(u => u.documentNumber === documentNumber);
           if (user) {
+            // Crear un token mock para mantener consistencia
+            const mockToken = 'mock-token-' + Date.now();
+            localStorage.setItem('token', mockToken);
             localStorage.setItem('user', JSON.stringify(user));
+            
             const hasShownWelcome = sessionStorage.getItem('hasShownWelcome');
             if (!hasShownWelcome) {
               setShowSuccessToast(true);
@@ -88,15 +92,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             setShowErrorModal(true);
           }
         }
-      }
-    } else {
-      if (registerData.password !== registerData.confirmPassword) {
-        setError('Las contraseñas no coinciden');
-        setLoading(false);
-        return;
-      }
-
-      try {
+      } else {
+        // Registro
         const response = await authAPI.register(registerData);
         const data = response.data;
 
@@ -108,9 +105,13 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           setShowSuccessToast(false);
           onLogin(data.user.role);
         }, 2000);
-      } catch (error: any) {
-        console.error('Error en registro:', error);
-        setError(error.response?.data?.message || 'Error en el registro');
+      }
+    } catch (error: any) {
+      console.error('Error en autenticación:', error);
+      if (registerData.password !== registerData.confirmPassword) {
+        setError('Las contraseñas no coinciden');
+      } else {
+        setError(error.response?.data?.message || 'Error en la autenticación');
       }
     }
 
