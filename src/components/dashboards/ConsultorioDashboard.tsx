@@ -54,7 +54,7 @@ const ConsultorioDashboard: React.FC = () => {
   const [pendingTriages, setPendingTriages] = useState<PendingTriage[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [showNewConsultation, setShowNewConsultation] = useState(false);
-  const [activeTab, setActiveTab] = useState<'today' | 'triages' | 'history'>('today');
+  const [activeTab, setActiveTab] = useState<'today' | 'triages' | 'history' | 'nueva-consulta'>('today');
   const [loading, setLoading] = useState(true);
 
   const [newConsultation, setNewConsultation] = useState({
@@ -73,6 +73,25 @@ const ConsultorioDashboard: React.FC = () => {
     fetchConsultations();
     fetchPatients();
     fetchPendingTriages();
+    
+    // Escuchar acciones del menú
+    const handleMenuAction = (event: any) => {
+      const { action } = event.detail;
+      switch (action) {
+        case 'nueva-consulta':
+          setActiveTab('nueva-consulta');
+          break;
+        case 'triajes-pendientes':
+          setActiveTab('triages');
+          break;
+        case 'historial-consultas':
+          setActiveTab('history');
+          break;
+      }
+    };
+
+    window.addEventListener('menuAction', handleMenuAction);
+    return () => window.removeEventListener('menuAction', handleMenuAction);
   }, []);
 
   const fetchConsultations = async () => {
@@ -331,6 +350,16 @@ const ConsultorioDashboard: React.FC = () => {
               >
                 Historial
               </button>
+              <button
+                onClick={() => setActiveTab('nueva-consulta')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'nueva-consulta'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Nueva Consulta
+              </button>
             </nav>
           </div>
 
@@ -550,10 +579,189 @@ const ConsultorioDashboard: React.FC = () => {
             )}
 
             {activeTab === 'history' && (
-              <div className="text-center py-12">
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Historial de Consultas</h3>
-                <p className="text-gray-600">Aquí se mostrará el historial completo de consultas</p>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-medium text-gray-900">Historial de Consultas</h3>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="date"
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <select className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <option>Todos los estados</option>
+                      <option>Completadas</option>
+                      <option>En proceso</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Lista de consultas históricas */}
+                <div className="space-y-4">
+                  {consultations.map((consultation) => (
+                    <div key={consultation._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                          <div className="bg-blue-100 p-2 rounded-full">
+                            <User className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-gray-900">
+                              {consultation.pacienteId.nombre} {consultation.pacienteId.apellido}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {new Date(consultation.fechaHora).toLocaleDateString('es-ES')} - 
+                              {new Date(consultation.fechaHora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          consultation.estado === 'completada' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-orange-100 text-orange-800'
+                        }`}>
+                          {consultation.estado === 'completada' ? 'Completada' : 'En Proceso'}
+                        </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-700">Motivo:</span>
+                          <p className="text-gray-600 mt-1">{consultation.motivoConsulta}</p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Diagnóstico:</span>
+                          <p className="text-gray-600 mt-1">{consultation.diagnostico}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-end space-x-2 mt-4">
+                        <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm">
+                          Ver Completa
+                        </button>
+                        <button className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm">
+                          Imprimir
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'nueva-consulta' && (
+              <div className="space-y-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                  <h3 className="text-lg font-medium text-blue-900 mb-2">Nueva Consulta Médica</h3>
+                  <p className="text-blue-700 text-sm">
+                    Puedes crear una nueva consulta desde un triaje pendiente o directamente seleccionando un paciente.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Desde Triajes Pendientes */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                      <AlertTriangle className="w-5 h-5 text-orange-600 mr-2" />
+                      Desde Triajes Pendientes
+                    </h4>
+                    
+                    {pendingTriages.length > 0 ? (
+                      <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {pendingTriages.slice(0, 5).map((triage) => (
+                          <div key={triage._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between mb-2">
+                              <div>
+                                <h5 className="font-medium text-gray-900">
+                                  {triage.pacienteId.nombre} {triage.pacienteId.apellido}
+                                </h5>
+                                <p className="text-sm text-gray-600">
+                                  Prioridad: <span className={`font-medium ${
+                                    triage.prioridad === 'alta' ? 'text-red-600' :
+                                    triage.prioridad === 'media' ? 'text-yellow-600' :
+                                    'text-green-600'
+                                  }`}>
+                                    {triage.prioridad.toUpperCase()}
+                                  </span>
+                                </p>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-700 mb-3">{triage.sintomas}</p>
+                            <button
+                              onClick={() => createConsultationFromTriage(triage)}
+                              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                            >
+                              Iniciar Consulta
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                        <p>No hay triajes pendientes</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Consulta Directa */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                      <Stethoscope className="w-5 h-5 text-blue-600 mr-2" />
+                      Consulta Directa
+                    </h4>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Seleccionar Paciente
+                        </label>
+                        <select
+                          value={selectedPatient?._id || ''}
+                          onChange={(e) => {
+                            const patient = patients.find(p => p._id === e.target.value);
+                            setSelectedPatient(patient || null);
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="">Seleccionar paciente</option>
+                          {patients.map(patient => (
+                            <option key={patient._id} value={patient._id}>
+                              {patient.nombre} {patient.apellido} - {patient.cedula}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      {selectedPatient && (
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <h5 className="font-medium text-gray-900 mb-2">Paciente Seleccionado</h5>
+                          <div className="text-sm text-gray-600 space-y-1">
+                            <p><span className="font-medium">Nombre:</span> {selectedPatient.nombre} {selectedPatient.apellido}</p>
+                            <p><span className="font-medium">C.I:</span> {selectedPatient.cedula}</p>
+                            <p><span className="font-medium">Teléfono:</span> {selectedPatient.telefono}</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <button
+                        onClick={() => {
+                          if (selectedPatient) {
+                            setNewConsultation({
+                              ...newConsultation,
+                              pacienteId: selectedPatient._id,
+                              triageId: ''
+                            });
+                            setShowNewConsultation(true);
+                          }
+                        }}
+                        disabled={!selectedPatient}
+                        className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Crear Consulta
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
