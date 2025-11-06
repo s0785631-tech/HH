@@ -200,6 +200,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                         onChange={(e) => setRegisterData({...registerData, role: e.target.value})}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
                       >
+                       <option value="empresa">Empresa</option>
                         <option value="recepcion">Recepción</option>
                         <option value="enfermeria">Enfermería</option>
                         <option value="consultorio">Consultorio</option>
@@ -230,7 +231,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Número*
+                    Número de Identificación*
                   </label>
                   <input
                     type="text"
@@ -243,7 +244,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent transition-all duration-300 ${
                       isLogin ? 'focus:ring-blue-500' : 'focus:ring-green-500'
                     }`}
-                    placeholder="Número"
+                    placeholder="Ingrese su número de identificación"
                   />
                 </div>
 
