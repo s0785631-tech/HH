@@ -1,6 +1,17 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// Detectar automáticamente la URL base
+const getBaseURL = () => {
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname } = window.location;
+    // En desarrollo usar puerto 3000, en producción usar el mismo dominio
+    const port = hostname === 'localhost' || hostname === '127.0.0.1' ? ':3000' : '';
+    return `${protocol}//${hostname}${port}`;
+  }
+  return 'http://localhost:3000';
+};
+
+const API_URL = getBaseURL();
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useEffect } from 'react';
 import UserMenu from './components/UserMenu';
 import EmpresaDashboard from './components/dashboards/EmpresaDashboard';
 import RecepcionDashboard from './components/dashboards/RecepcionDashboard';
@@ -18,17 +19,56 @@ const getRoleColor = (role: string) => {
 
 function App() {
   const [userRole, setUserRole] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Verificar si hay una sesión activa al cargar la aplicación
+    const checkExistingSession = () => {
+      try {
+        const token = localStorage.getItem('token');
+        const user = localStorage.getItem('user');
+        
+        if (token && user) {
+          const userData = JSON.parse(user);
+          console.log('Existing session found:', userData);
+          setUserRole(userData.role);
+        }
+      } catch (error) {
+        console.error('Error checking existing session:', error);
+        // Limpiar datos corruptos
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkExistingSession();
+  }, []);
 
   const handleLogin = (role) => {
+    console.log('Login successful, setting role:', role);
     setUserRole(role);
   };
 
   const handleLogout = () => {
+    console.log('Logging out user');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     sessionStorage.removeItem('hasShownWelcome');
     setUserRole(null);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
 
   const renderDashboard = () => {
     switch (userRole) {
