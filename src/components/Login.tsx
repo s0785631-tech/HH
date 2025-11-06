@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, Heart, UserPlus } from 'lucide-react';
 import ErrorModal from './ErrorModal';
 import SuccessToast from './SuccessToast';
+import { authAPI } from '../services/api';
 
 interface LoginProps {
   onLogin: (role: string) => void;
@@ -34,69 +35,61 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setError('');
 
     if (isLogin) {
-      // Lógica de login
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/login`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            documentType, 
-            documentNumber,
-            password 
-          }),
+        const response = await authAPI.login({
+          documentType,
+          documentNumber,
+          password
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('user', JSON.stringify(data.user));
+        const data = response.data;
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
 
-          const hasShownWelcome = sessionStorage.getItem('hasShownWelcome');
-          if (!hasShownWelcome) {
-            setShowSuccessToast(true);
-            sessionStorage.setItem('hasShownWelcome', 'true');
-            setTimeout(() => {
-              setShowSuccessToast(false);
-              onLogin(data.user.role);
-            }, 2000);
-          } else {
+        const hasShownWelcome = sessionStorage.getItem('hasShownWelcome');
+        if (!hasShownWelcome) {
+          setShowSuccessToast(true);
+          sessionStorage.setItem('hasShownWelcome', 'true');
+          setTimeout(() => {
+            setShowSuccessToast(false);
             onLogin(data.user.role);
-          }
+          }, 2000);
         } else {
-          const errorData = await response.json();
-          setShowErrorModal(true);
+          onLogin(data.user.role);
         }
-      } catch (error) {
-        // Fallback to mock authentication for development
-        const mockUsers = [
-          { documentNumber: '12345678', role: 'empresa', name: 'Director General' },
-          { documentNumber: '87654321', role: 'recepcion', name: 'Ana García' },
-          { documentNumber: '11111111', role: 'consultorio', name: 'Dr. Carlos Mendez' },
-          { documentNumber: '22222222', role: 'enfermeria', name: 'Enf. María López' },
-        ];
+      } catch (error: any) {
+        console.error('Error en login:', error);
 
-        const user = mockUsers.find(u => u.documentNumber === documentNumber);
-        if (user) {
-          localStorage.setItem('user', JSON.stringify(user));
-          const hasShownWelcome = sessionStorage.getItem('hasShownWelcome');
-          if (!hasShownWelcome) {
-            setShowSuccessToast(true);
-            sessionStorage.setItem('hasShownWelcome', 'true');
-            setTimeout(() => {
-              setShowSuccessToast(false);
-              onLogin(user.role);
-            }, 2000);
-          } else {
-            onLogin(user.role);
-          }
-        } else {
+        if (error.response?.status === 401) {
           setShowErrorModal(true);
+        } else {
+          const mockUsers = [
+            { documentNumber: '12345678', role: 'empresa', name: 'Director General' },
+            { documentNumber: '87654321', role: 'recepcion', name: 'Ana García' },
+            { documentNumber: '11111111', role: 'consultorio', name: 'Dr. Carlos Mendez' },
+            { documentNumber: '22222222', role: 'enfermeria', name: 'Enf. María López' },
+          ];
+
+          const user = mockUsers.find(u => u.documentNumber === documentNumber);
+          if (user) {
+            localStorage.setItem('user', JSON.stringify(user));
+            const hasShownWelcome = sessionStorage.getItem('hasShownWelcome');
+            if (!hasShownWelcome) {
+              setShowSuccessToast(true);
+              sessionStorage.setItem('hasShownWelcome', 'true');
+              setTimeout(() => {
+                setShowSuccessToast(false);
+                onLogin(user.role);
+              }, 2000);
+            } else {
+              onLogin(user.role);
+            }
+          } else {
+            setShowErrorModal(true);
+          }
         }
       }
     } else {
-      // Lógica de registro
       if (registerData.password !== registerData.confirmPassword) {
         setError('Las contraseñas no coinciden');
         setLoading(false);
@@ -104,29 +97,23 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       }
 
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(registerData),
-        });
+        const response = await authAPI.register(registerData);
+        const data = response.data;
 
-        if (response.ok) {
-          setShowSuccessToast(true);
-          setTimeout(() => {
-            setShowSuccessToast(false);
-            setIsLogin(true);
-          }, 2000);
-        } else {
-          const errorData = await response.json();
-          setError(errorData.message || 'Error en el registro');
-        }
-      } catch (error) {
-        setError('Error de conexión');
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        setShowSuccessToast(true);
+        setTimeout(() => {
+          setShowSuccessToast(false);
+          onLogin(data.user.role);
+        }, 2000);
+      } catch (error: any) {
+        console.error('Error en registro:', error);
+        setError(error.response?.data?.message || 'Error en el registro');
       }
     }
-    
+
     setLoading(false);
   };
 

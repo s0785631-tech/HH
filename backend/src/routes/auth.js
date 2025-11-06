@@ -42,6 +42,46 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Register
+router.post('/register', async (req, res) => {
+  try {
+    const { name, email, documentType, documentNumber, password, role } = req.body;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'El correo ya está registrado' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({
+      email,
+      password: hashedPassword,
+      role,
+      name
+    });
+
+    await newUser.save();
+
+    const token = jwt.sign(
+      { userId: newUser._id, role: newUser.role },
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '8h' }
+    );
+
+    res.status(201).json({
+      token,
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        role: newUser.role
+      }
+    });
+  } catch (error) {
+    console.error('Error en registro:', error);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
 // Create initial users (for development)
 router.post('/seed', async (req, res) => {
   try {
