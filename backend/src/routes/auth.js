@@ -12,12 +12,17 @@ router.post('/login', async (req, res) => {
 
     console.log('Login attempt:', { documentType, documentNumber });
 
-    // Buscar usuario por email (que puede ser el número de documento)
-    let dbUser = await User.findOne({ email: documentNumber });
+    // Buscar usuario por email que coincida con el número de documento
+    let dbUser = await User.findOne({ 
+      $or: [
+        { email: documentNumber },
+        { email: `${documentNumber}@saviser.local` }
+      ]
+    });
     
-    // Si no se encuentra por email, buscar por el número de documento como email
+    // Si no se encuentra, buscar en el campo personalizado documentNumber si existe
     if (!dbUser) {
-      dbUser = await User.findOne({ email: `${documentNumber}@saviser.local` });
+      dbUser = await User.findOne({ documentNumber: documentNumber });
     }
 
     if (dbUser) {

@@ -336,6 +336,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         title="¡Ups, parece que algo salió mal!"
         message={error || "Las credenciales proporcionadas no son válidas"}
         buttonText="Aceptar"
+        persistent={true}
       />
 
       {/* Success Toast */}

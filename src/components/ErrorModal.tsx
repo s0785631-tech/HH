@@ -7,6 +7,7 @@ interface ErrorModalProps {
   title?: string;
   message?: string;
   buttonText?: string;
+  persistent?: boolean;
 }
 
 const ErrorModal: React.FC<ErrorModalProps> = ({
@@ -14,7 +15,8 @@ const ErrorModal: React.FC<ErrorModalProps> = ({
   onClose,
   title = "¡Ups, parece que algo salió mal!",
   message = "Las credenciales proporcionadas no son válidas",
-  buttonText = "Aceptar"
+  buttonText = "Aceptar",
+  persistent = false
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -40,7 +42,7 @@ const ErrorModal: React.FC<ErrorModalProps> = ({
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
+    if (e.target === e.currentTarget && !persistent) {
       handleClose();
     }
   };
