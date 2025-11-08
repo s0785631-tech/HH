@@ -1,22 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Calendar, 
-  TrendingUp, 
-  Activity,
-  UserPlus,
-  Stethoscope,
-  Building2,
-  BarChart3,
-  Clock,
-  CheckCircle,
-  AlertTriangle,
-  FileText,
-  Settings,
-  Eye,
-  Edit,
-  Trash2
-} from 'lucide-react';
+import { Users, Calendar, TrendingUp, Activity, UserPlus, Stethoscope, Building2, BarChart3, Clock, CheckCircle, AlertTriangle, FileText, Settings, Eye, CreditCard as Edit, Trash2 } from 'lucide-react';
 import ErrorModal from '../ErrorModal';
 import SuccessToast from '../SuccessToast';
 
