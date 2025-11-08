@@ -278,13 +278,13 @@ const EnfermeriaDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200">
-        <div className="px-6 py-4">
+      <div className="bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200 flex-shrink-0">
+        <div className="px-4 py-2">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-red-900 animate-fade-in">Enfermería - Triaje</h1>
+              <h1 className="text-xl font-bold text-red-900">Enfermería - Triaje</h1>
               <p className="text-red-700">Evaluación y clasificación de pacientes</p>
             </div>
             
@@ -312,10 +312,10 @@ const EnfermeriaDashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-3 flex-1 overflow-y-auto">
         {/* Estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <div className="grid grid-cols-5 gap-2 mb-3">
+          <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Triajes</p>
@@ -325,7 +325,7 @@ const EnfermeriaDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Pendientes</p>
@@ -335,7 +335,7 @@ const EnfermeriaDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">En Proceso</p>
@@ -345,7 +345,7 @@ const EnfermeriaDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Completados</p>
@@ -355,7 +355,7 @@ const EnfermeriaDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Prioridad Alta</p>

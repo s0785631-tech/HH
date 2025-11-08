@@ -443,14 +443,14 @@ const RecepcionDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-green-50 to-green-100 border-b border-green-200">
-        <div className="px-6 py-4">
+      <div className="bg-gradient-to-r from-green-50 to-green-100 border-b border-green-200 flex-shrink-0">
+        <div className="px-4 py-2">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-green-900 animate-fade-in">Recepción</h1>
-              <p className="text-green-700">Gestión de citas y pacientes</p>
+              <h1 className="text-xl font-bold text-green-900">Recepción</h1>
+              <p className="text-sm text-green-700">Gestión de citas y pacientes</p>
             </div>
             {/* <div className="flex space-x-3">
               <button
@@ -472,44 +472,44 @@ const RecepcionDashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-3 flex-1 overflow-y-auto">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <div className="grid grid-cols-4 gap-2 mb-3">
+          <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Citas Hoy</p>
-                <p className="text-2xl font-bold text-gray-900">{todayStats.total}</p>
+                <p className="text-xs font-medium text-gray-600">Total Citas Hoy</p>
+                <p className="text-lg font-bold text-gray-900">{todayStats.total}</p>
               </div>
               <Calendar className="w-8 h-8 text-blue-600" />
             </div>
           </div>
           
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Confirmadas</p>
-                <p className="text-2xl font-bold text-green-600">{todayStats.confirmadas}</p>
+                <p className="text-xs font-medium text-gray-600">Confirmadas</p>
+                <p className="text-lg font-bold text-green-600">{todayStats.confirmadas}</p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
           </div>
           
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Pendientes</p>
-                <p className="text-2xl font-bold text-orange-600">{todayStats.pendientes}</p>
+                <p className="text-xs font-medium text-gray-600">Pendientes</p>
+                <p className="text-lg font-bold text-orange-600">{todayStats.pendientes}</p>
               </div>
               <Clock className="w-8 h-8 text-orange-600" />
             </div>
           </div>
           
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Completadas</p>
-                <p className="text-2xl font-bold text-gray-600">{todayStats.completadas}</p>
+                <p className="text-xs font-medium text-gray-600">Completadas</p>
+                <p className="text-lg font-bold text-gray-600">{todayStats.completadas}</p>
               </div>
               <Users className="w-8 h-8 text-gray-600" />
             </div>

@@ -227,22 +227,22 @@ const EmpresaDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-50 to-purple-100 border-b border-purple-200">
-        <div className="px-6 py-4">
+      <div className="bg-gradient-to-r from-purple-50 to-purple-100 border-b border-purple-200 flex-shrink-0">
+        <div className="px-4 py-2">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-purple-900 animate-fade-in">Dirección General</h1>
-              <p className="text-purple-700">Panel de administración y control</p>
+              <h1 className="text-xl font-bold text-purple-900">Dirección General</h1>
+              <p className="text-sm text-purple-700">Panel de administración y control</p>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex space-x-2">
               <button
                 onClick={() => {
                   setActiveTab('nuevo-doctor');
                   setShowNewDoctorModal(true);
                 }}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                className="bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-1.5 text-sm"
               >
                 <UserPlus className="w-4 h-4" />
                 <span>Nuevo Doctor</span>
@@ -252,14 +252,14 @@ const EmpresaDashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-3 flex-1 overflow-y-auto">
         {/* Tabs */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-3">
           <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6">
+            <nav className="flex space-x-6 px-4">
               <button
                 onClick={() => setActiveTab('dashboard')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`py-2 px-1 border-b-2 font-medium text-xs ${
                   activeTab === 'dashboard'
                     ? 'border-purple-500 text-purple-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -294,82 +294,82 @@ const EmpresaDashboard: React.FC = () => {
         {activeTab === 'dashboard' && (
           <>
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Total Pacientes</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalPatients}</p>
+                    <p className="text-xs font-medium text-gray-600">Total Pacientes</p>
+                    <p className="text-lg font-bold text-gray-900">{stats.totalPatients}</p>
                   </div>
-                  <Users className="w-8 h-8 text-blue-600" />
+                  <Users className="w-5 h-5 text-blue-600" />
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Citas Hoy</p>
-                    <p className="text-2xl font-bold text-green-600">{stats.todayAppointments}</p>
+                    <p className="text-xs font-medium text-gray-600">Citas Hoy</p>
+                    <p className="text-lg font-bold text-green-600">{stats.todayAppointments}</p>
                   </div>
-                  <Calendar className="w-8 h-8 text-green-600" />
+                  <Calendar className="w-5 h-5 text-green-600" />
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Triajes Pendientes</p>
-                    <p className="text-2xl font-bold text-orange-600">{stats.pendingTriages}</p>
+                    <p className="text-xs font-medium text-gray-600">Triajes Pendientes</p>
+                    <p className="text-lg font-bold text-orange-600">{stats.pendingTriages}</p>
                   </div>
-                  <AlertTriangle className="w-8 h-8 text-orange-600" />
+                  <AlertTriangle className="w-5 h-5 text-orange-600" />
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Consultas Hoy</p>
-                    <p className="text-2xl font-bold text-purple-600">{stats.todayConsultations}</p>
+                    <p className="text-xs font-medium text-gray-600">Consultas Hoy</p>
+                    <p className="text-lg font-bold text-purple-600">{stats.todayConsultations}</p>
                   </div>
-                  <Stethoscope className="w-8 h-8 text-purple-600" />
+                  <Stethoscope className="w-5 h-5 text-purple-600" />
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Citas del Mes</p>
-                    <p className="text-2xl font-bold text-indigo-600">{stats.monthlyAppointments}</p>
+                    <p className="text-xs font-medium text-gray-600">Citas del Mes</p>
+                    <p className="text-lg font-bold text-indigo-600">{stats.monthlyAppointments}</p>
                   </div>
-                  <BarChart3 className="w-8 h-8 text-indigo-600" />
+                  <BarChart3 className="w-5 h-5 text-indigo-600" />
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Doctores Activos</p>
-                    <p className="text-2xl font-bold text-teal-600">{doctors.filter(d => d.isActive).length}</p>
+                    <p className="text-xs font-medium text-gray-600">Doctores Activos</p>
+                    <p className="text-lg font-bold text-teal-600">{doctors.filter(d => d.isActive).length}</p>
                   </div>
-                  <Building2 className="w-8 h-8 text-teal-600" />
+                  <Building2 className="w-5 h-5 text-teal-600" />
                 </div>
               </div>
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">Acciones Rápidas</h2>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="px-3 py-2 border-b border-gray-200">
+                  <h2 className="text-sm font-semibold text-gray-900">Acciones Rápidas</h2>
                 </div>
                 
-                <div className="p-6 space-y-4">
+                <div className="p-3 space-y-2">
                   <button
                     onClick={() => {
                       setActiveTab('nuevo-doctor');
                       setShowNewDoctorModal(true);
                     }}
-                    className="w-full text-left p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+                    className="w-full text-left p-2 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
                   >
                     <div className="flex items-center space-x-3">
                       <UserPlus className="w-6 h-6 text-purple-600" />
@@ -382,7 +382,7 @@ const EmpresaDashboard: React.FC = () => {
                   
                   <button
                     onClick={() => setActiveTab('doctores')}
-                    className="w-full text-left p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                    className="w-full text-left p-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
                   >
                     <div className="flex items-center space-x-3">
                       <Stethoscope className="w-6 h-6 text-blue-600" />
@@ -395,7 +395,7 @@ const EmpresaDashboard: React.FC = () => {
                   
                   <button
                     onClick={() => setActiveTab('reportes')}
-                    className="w-full text-left p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                    className="w-full text-left p-2 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
                   >
                     <div className="flex items-center space-x-3">
                       <BarChart3 className="w-6 h-6 text-green-600" />
@@ -408,9 +408,9 @@ const EmpresaDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">Resumen del Sistema</h2>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="px-3 py-2 border-b border-gray-200">
+                  <h2 className="text-sm font-semibold text-gray-900">Resumen del Sistema</h2>
                 </div>
                 
                 <div className="p-6">
