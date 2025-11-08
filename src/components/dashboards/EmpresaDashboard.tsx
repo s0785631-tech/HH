@@ -1,38 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Calendar, 
-  FileText, 
-  Stethoscope, 
-  Clock, 
-  User, 
-  Heart, 
-  Thermometer, 
-  Activity,
-  Building2,
-  UserPlus,
-  BarChart3,
-  Settings,
-  TrendingUp,
-  DollarSign,
-  Shield,
-  Search,
-  Edit,
-  Trash2,
-  Eye,
-  Plus,
-  Save,
-  X,
-  CheckCircle,
-  AlertTriangle,
-  Download,
-  Filter,
-  Calendar as CalendarIcon,
-  Phone,
-  Mail,
-  MapPin,
-  GraduationCap
-} from 'lucide-react';
+import { Users, Calendar, FileText, Stethoscope, Clock, User, Heart, Thermometer, Activity, Building2, UserPlus, BarChart3, Settings, TrendingUp, DollarSign, Shield, Search, CreditCard as Edit, Trash2, Eye, Plus, Save, X, CheckCircle, AlertTriangle, Download, Filter, Calendar as CalendarIcon, Phone, Mail, MapPin, GraduationCap } from 'lucide-react';
 
 interface Doctor {
   _id: string;
