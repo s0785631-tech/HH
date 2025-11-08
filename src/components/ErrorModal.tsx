@@ -42,6 +42,7 @@ const ErrorModal: React.FC<ErrorModalProps> = ({
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
+    // Solo cerrar si no es persistente Y el clic fue en el backdrop
     if (e.target === e.currentTarget && !persistent) {
       handleClose();
     }

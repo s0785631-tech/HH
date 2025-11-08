@@ -81,8 +81,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       } else {
         const errorMessage = error.response?.data?.message || 'Credenciales inválidas';
         setError(errorMessage);
-        setShowErrorModal(true);
       }
+      setShowErrorModal(true);
     }
 
     setLoading(false);
@@ -334,7 +334,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       {/* Error Modal */}
       <ErrorModal
         isOpen={showErrorModal}
-        onClose={() => setShowErrorModal(false)}
+        onClose={() => {
+          setShowErrorModal(false);
+          setError('');
+        }}
         title="¡Ups, parece que algo salió mal!"
         message={error || "Las credenciales proporcionadas no son válidas"}
         buttonText="Aceptar"
