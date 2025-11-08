@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Calendar, TrendingUp, Activity, UserPlus, Stethoscope, Building2, BarChart3, Clock, CheckCircle, AlertTriangle, FileText, Settings, Eye, CreditCard as Edit, Trash2 } from 'lucide-react';
 import ErrorModal from '../ErrorModal';
 import SuccessToast from '../SuccessToast';
+import { PDFGenerator } from '../../utils/pdfGenerator';
 
 interface Doctor {
   _id: string;
@@ -151,6 +152,8 @@ const EmpresaDashboard: React.FC = () => {
   const handleCreateDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Submitting doctor data:', newDoctor);
+    
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/doctors`, {
@@ -161,6 +164,10 @@ const EmpresaDashboard: React.FC = () => {
         },
         body: JSON.stringify(newDoctor)
       });
+      
+      console.log('Response status:', response.status);
+      const responseData = await response.json();
+      console.log('Response data:', responseData);
       
       if (response.ok) {
         fetchDoctors();
@@ -193,8 +200,7 @@ const EmpresaDashboard: React.FC = () => {
         setShowSuccessToast(true);
         setActiveTab('doctores');
       } else {
-        const errorData = await response.json();
-        setErrorMessage(errorData.message || 'Error al crear el doctor');
+        setErrorMessage(responseData.message || 'Error al crear el doctor');
         setShowErrorModal(true);
       }
     } catch (error) {
@@ -210,9 +216,31 @@ const EmpresaDashboard: React.FC = () => {
     setNewDoctor({ ...newDoctor, horarios: updatedHorarios });
   };
 
+  // Importar PDFGenerator
+  import { PDFGenerator } from '../../utils/pdfGenerator';
+
   const generateReport = () => {
-    setSuccessMessage('Generando reporte...');
-    setShowSuccessToast(true);
+    generateCompanyReport();
+  };
+
+  const generateCompanyReport = async () => {
+    try {
+      setSuccessMessage('Generando reporte...');
+      setShowSuccessToast(true);
+      
+      const blob = await PDFGenerator.generateCompanyReportPDF(stats, doctors);
+      const filename = `reporte_empresa_${new Date().toISOString().split('T')[0]}.pdf`;
+      PDFGenerator.downloadPDF(blob, filename);
+      
+      setTimeout(() => {
+        setSuccessMessage('¡Reporte generado exitosamente!');
+        setShowSuccessToast(true);
+      }, 1000);
+    } catch (error) {
+      console.error('Error generating report:', error);
+      setErrorMessage('Error al generar el reporte. Intente nuevamente.');
+      setShowErrorModal(true);
+    }
   };
 
   if (loading) {

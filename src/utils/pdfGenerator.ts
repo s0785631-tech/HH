@@ -469,6 +469,107 @@ export class PDFGenerator {
     return pdf.output('blob');
   }
 
+// Agregar función para generar reporte de empresa
+  static async generateCompanyReportPDF(stats: any, doctors: any[]): Promise<Blob> {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    let yPosition = 20;
+
+    // Header
+    pdf.setFontSize(20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 102, 153);
+    pdf.text('SAVISER', pageWidth / 2, yPosition, { align: 'center' });
+    
+    yPosition += 8;
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text('Servicio de Apoyo a la Vida del Ser Humano', pageWidth / 2, yPosition, { align: 'center' });
+    
+    yPosition += 15;
+    pdf.setDrawColor(0, 102, 153);
+    pdf.line(20, yPosition, pageWidth - 20, yPosition);
+    yPosition += 15;
+
+    // Título
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 0, 0);
+    pdf.text('REPORTE EJECUTIVO', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 10;
+    
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Fecha: ${this.formatDate(new Date().toISOString())}`, pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 20;
+
+    // Estadísticas generales
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('ESTADÍSTICAS GENERALES', 20, yPosition);
+    yPosition += 15;
+
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'normal');
+    
+    // Crear tabla de estadísticas
+    const statsData = [
+      ['Total de Pacientes', stats.totalPatients?.toString() || '0'],
+      ['Citas del Día', stats.todayAppointments?.toString() || '0'],
+      ['Triajes Pendientes', stats.pendingTriages?.toString() || '0'],
+      ['Consultas del Día', stats.todayConsultations?.toString() || '0'],
+      ['Citas del Mes', stats.monthlyAppointments?.toString() || '0'],
+      ['Consultas del Mes', stats.monthlyConsultations?.toString() || '0'],
+      ['Doctores Activos', doctors.filter(d => d.isActive).length.toString()]
+    ];
+
+    statsData.forEach(([label, value]) => {
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(label + ':', 25, yPosition);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(value, 120, yPosition);
+      yPosition += 8;
+    });
+
+    yPosition += 15;
+
+    // Lista de doctores
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('PERSONAL MÉDICO', 20, yPosition);
+    yPosition += 15;
+
+    doctors.forEach((doctor, index) => {
+      if (yPosition > 250) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`${index + 1}. Dr. ${doctor.nombre} ${doctor.apellido}`, 25, yPosition);
+      yPosition += 6;
+      
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Especialidad: ${doctor.especialidad}`, 30, yPosition);
+      yPosition += 5;
+      pdf.text(`Licencia: ${doctor.numeroLicencia}`, 30, yPosition);
+      yPosition += 5;
+      pdf.text(`Consultorio: ${doctor.consultorio.numero} - ${doctor.consultorio.nombre}`, 30, yPosition);
+      yPosition += 5;
+      pdf.text(`Estado: ${doctor.isActive ? 'Activo' : 'Inactivo'}`, 30, yPosition);
+      yPosition += 10;
+    });
+
+    // Pie de página
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Generado el ${new Date().toLocaleString('es-ES')}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+    return pdf.output('blob');
+  }
+
   static downloadPDF(blob: Blob, filename: string): void {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

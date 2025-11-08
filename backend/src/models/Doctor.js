@@ -35,7 +35,8 @@ const DoctorSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    lowercase: true
+    lowercase: true,
+    unique: true
   },
   consultorio: {
     numero: {
@@ -75,5 +76,11 @@ const DoctorSchema = new mongoose.Schema({
     default: Date.now
   }
 });
+
+// Índices para mejorar las consultas
+DoctorSchema.index({ cedula: 1 });
+DoctorSchema.index({ numeroLicencia: 1 });
+DoctorSchema.index({ email: 1 });
+DoctorSchema.index({ userId: 1 });
 
 module.exports = mongoose.model('Doctor', DoctorSchema);

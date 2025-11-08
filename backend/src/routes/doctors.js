@@ -61,8 +61,12 @@ router.get('/available/:fecha/:hora', authMiddleware, async (req, res) => {
 // Create doctor (only empresa role)
 router.post('/', authMiddleware, async (req, res) => {
   try {
+    console.log('Creating doctor with data:', req.body);
+    console.log('User role:', req.user.role);
+    
     // Verificar que el usuario tenga rol de empresa
     if (req.user.role !== 'empresa') {
+      console.log('Access denied - user role is not empresa');
       return res.status(403).json({ message: 'No autorizado' });
     }
 
@@ -79,19 +83,47 @@ router.post('/', authMiddleware, async (req, res) => {
       password
     } = req.body;
 
+    console.log('Extracted data:', {
+      nombre, apellido, cedula, especialidad, numeroLicencia, telefono, email, consultorio, horarios
+    });
+
+    // Validar campos requeridos
+    if (!nombre || !apellido || !cedula || !especialidad || !numeroLicencia || !telefono || !email || !password) {
+      console.log('Missing required fields');
+      return res.status(400).json({ message: 'Todos los campos son requeridos' });
+    }
+
+    // Verificar si ya existe un doctor con la misma cédula
+    const existingDoctor = await Doctor.findOne({ cedula });
+    if (existingDoctor) {
+      console.log('Doctor with cedula already exists:', cedula);
+      return res.status(400).json({ message: 'Ya existe un doctor con esta cédula' });
+    }
+
+    // Verificar si ya existe un usuario con el mismo email
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      console.log('User with email already exists:', email);
+      return res.status(400).json({ message: 'Ya existe un usuario con este email' });
+    }
     // Crear usuario para el doctor
+    console.log('Creating user for doctor...');
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({
       email,
+      cedula,
       password: hashedPassword,
       role: 'consultorio',
       name: `Dr. ${nombre} ${apellido}`
     });
-    await user.save();
+    
+    const savedUser = await user.save();
+    console.log('User created successfully:', savedUser._id);
 
     // Crear doctor
+    console.log('Creating doctor record...');
     const doctor = new Doctor({
-      userId: user._id,
+      userId: savedUser._id,
       nombre,
       apellido,
       cedula,
@@ -100,19 +132,32 @@ router.post('/', authMiddleware, async (req, res) => {
       telefono,
       email,
       consultorio,
-      horarios
+      horarios: horarios || []
     });
-    await doctor.save();
+    
+    const savedDoctor = await doctor.save();
+    console.log('Doctor created successfully:', savedDoctor._id);
 
     const populatedDoctor = await Doctor.findById(doctor._id)
       .populate('userId', 'email name');
     
+    console.log('Doctor creation completed successfully');
+    
     res.status(201).json(populatedDoctor);
   } catch (error) {
+    console.error('Error creating doctor:', error);
     if (error.code === 11000) {
-      res.status(400).json({ message: 'Ya existe un doctor con esta cédula o número de licencia' });
+      const field = Object.keys(error.keyPattern)[0];
+      const message = field === 'cedula' ? 'Ya existe un doctor con esta cédula' : 
+                     field === 'numeroLicencia' ? 'Ya existe un doctor con este número de licencia' :
+                     field === 'email' ? 'Ya existe un usuario con este email' :
+                     'Ya existe un registro con estos datos';
+      res.status(400).json({ message });
     } else {
-      res.status(500).json({ message: 'Error del servidor' });
+      res.status(500).json({ 
+        message: 'Error del servidor',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
 });
