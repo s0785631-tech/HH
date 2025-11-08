@@ -41,14 +41,13 @@ api.interceptors.response.use(
 );
 
 export const authAPI = {
-  login: (data: { documentType: string; documentNumber: string; password: string }) =>
+  login: (data: { cedula: string; password: string }) =>
     api.post('/auth/login', data),
 
   register: (data: {
     name: string;
     email: string;
-    documentType: string;
-    documentNumber: string;
+    cedula: string;
     password: string;
     role: string;
   }) => api.post('/auth/register', data),

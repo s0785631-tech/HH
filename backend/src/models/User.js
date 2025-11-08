@@ -7,6 +7,11 @@ const UserSchema = new mongoose.Schema({
     unique: true,
     lowercase: true
   },
+  cedula: {
+    type: String,
+    required: true,
+    unique: true
+  },
   password: {
     type: String,
     required: true

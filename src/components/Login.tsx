@@ -36,10 +36,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
     try {
       if (isLogin) {
-        // Login con API
+        // Login con cédula
         const response = await authAPI.login({
-          documentType,
-          documentNumber,
+          cedula: documentNumber,
           password
         });
 
@@ -60,7 +59,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         }
       } else {
         // Registro
-        const response = await authAPI.register(registerData);
+        const response = await authAPI.register({
+          ...registerData,
+          cedula: registerData.documentNumber
+        });
         const data = response.data;
 
         localStorage.setItem('token', data.token);

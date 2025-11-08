@@ -8,29 +8,22 @@ const router = express.Router();
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { documentType, documentNumber, password } = req.body;
+    const { cedula, password } = req.body;
 
-    console.log('Login attempt:', { documentType, documentNumber });
+    console.log('Login attempt:', { cedula });
 
-    // Buscar usuario por email que coincida con el número de documento
+    // Buscar usuario por cédula
     let dbUser = await User.findOne({ 
-      $or: [
-        { email: documentNumber },
-        { email: `${documentNumber}@saviser.local` }
-      ]
+      cedula: cedula
     });
     
-    // Si no se encuentra, buscar en el campo personalizado documentNumber si existe
-    if (!dbUser) {
-      dbUser = await User.findOne({ documentNumber: documentNumber });
-    }
 
     if (dbUser) {
       // User exists in database, validate password
       const isValidPassword = await bcrypt.compare(password, dbUser.password);
 
       if (!isValidPassword) {
-        console.log('Invalid password for user:', documentNumber);
+        console.log('Invalid password for user:', cedula);
         return res.status(401).json({ message: 'Credenciales inválidas' });
       }
 
@@ -40,7 +33,7 @@ router.post('/login', async (req, res) => {
         { expiresIn: '8h' }
       );
 
-      console.log('Login successful for user:', dbUser.email);
+      console.log('Login successful for user:', dbUser.cedula);
       return res.json({
         token,
         user: {
@@ -53,16 +46,16 @@ router.post('/login', async (req, res) => {
 
     // Si no existe en la base de datos, crear usuarios por defecto si es necesario
     const mockUsers = [
-      { documentNumber: '12345678', password: '12345678', role: 'empresa', name: 'Director General', email: 'empresa@saviser.com' },
-      { documentNumber: '87654321', password: '87654321', role: 'recepcion', name: 'Ana García', email: 'recepcion@saviser.com' },
-      { documentNumber: '11111111', password: '11111111', role: 'consultorio', name: 'Dr. Carlos Mendez', email: 'consultorio@saviser.com' },
-      { documentNumber: '22222222', password: '22222222', role: 'enfermeria', name: 'Enf. María López', email: 'enfermeria@saviser.com' },
+      { cedula: '12345678', password: '12345678', role: 'empresa', name: 'Director General', email: 'empresa@saviser.com' },
+      { cedula: '87654321', password: '87654321', role: 'recepcion', name: 'Ana García', email: 'recepcion@saviser.com' },
+      { cedula: '11111111', password: '11111111', role: 'consultorio', name: 'Dr. Carlos Mendez', email: 'consultorio@saviser.com' },
+      { cedula: '22222222', password: '22222222', role: 'enfermeria', name: 'Enf. María López', email: 'enfermeria@saviser.com' },
     ];
 
-    const mockUser = mockUsers.find(u => u.documentNumber === documentNumber && u.password === password);
+    const mockUser = mockUsers.find(u => u.cedula === cedula && u.password === password);
 
     if (!mockUser) {
-      console.log('User not found:', documentNumber);
+      console.log('User not found:', cedula);
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
@@ -71,6 +64,7 @@ router.post('/login', async (req, res) => {
       const hashedPassword = await bcrypt.hash(mockUser.password, 10);
       const newUser = new User({
         email: mockUser.email,
+        cedula: mockUser.cedula,
         password: hashedPassword,
         role: mockUser.role,
         name: mockUser.name
@@ -83,7 +77,7 @@ router.post('/login', async (req, res) => {
         { expiresIn: '8h' }
       );
 
-      console.log('Created and logged in user:', mockUser.email);
+      console.log('Created and logged in user:', mockUser.cedula);
       return res.json({
         token,
         user: {
@@ -98,16 +92,16 @@ router.post('/login', async (req, res) => {
 
     // Fallback: login temporal sin crear usuario
     const token = jwt.sign(
-      { userId: mockUser.documentNumber, role: mockUser.role },
+      { userId: mockUser.cedula, role: mockUser.role },
       process.env.JWT_SECRET || 'secret',
       { expiresIn: '8h' }
     );
 
-    console.log('Temporary login for:', mockUser.documentNumber);
+    console.log('Temporary login for:', mockUser.cedula);
     res.json({
       token,
       user: {
-        id: mockUser.documentNumber,
+        id: mockUser.cedula,
         name: mockUser.name,
         role: mockUser.role
       }
@@ -121,18 +115,21 @@ router.post('/login', async (req, res) => {
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, documentType, documentNumber, password, role } = req.body;
+    const { name, email, cedula, password, role } = req.body;
 
-    console.log('Register attempt:', { name, email, role });
+    console.log('Register attempt:', { name, email, cedula, role });
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ 
+      $or: [{ email }, { cedula }]
+    });
     if (existingUser) {
-      return res.status(400).json({ message: 'El correo ya está registrado' });
+      return res.status(400).json({ message: 'El correo o cédula ya está registrado' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({
       email,
+      cedula,
       password: hashedPassword,
       role,
       name
@@ -146,7 +143,7 @@ router.post('/register', async (req, res) => {
       { expiresIn: '8h' }
     );
 
-    console.log('User registered successfully:', email);
+    console.log('User registered successfully:', cedula);
     res.status(201).json({
       token,
       user: {
