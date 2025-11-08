@@ -216,9 +216,6 @@ const EmpresaDashboard: React.FC = () => {
     setNewDoctor({ ...newDoctor, horarios: updatedHorarios });
   };
 
-  // Importar PDFGenerator
-  import { PDFGenerator } from '../../utils/pdfGenerator';
-
   const generateReport = () => {
     generateCompanyReport();
   };
