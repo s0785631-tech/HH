@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, FileText, Stethoscope, Clock, User, Heart, Thermometer, Activity, Pill, TestTube, Save, Eye, CreditCard as Edit, Plus, AlertTriangle } from 'lucide-react';
+import { Users, Calendar, FileText, Stethoscope, Clock, User, Heart, Thermometer, Activity, Pill, TestTube, Save, Eye, CreditCard as Edit, Plus, AlertTriangle, Download, Printer } from 'lucide-react';
+import { PDFGenerator } from '../../utils/pdfGenerator';
 
 interface Patient {
   _id: string;
@@ -56,6 +57,8 @@ const ConsultorioDashboard: React.FC = () => {
   const [showNewConsultation, setShowNewConsultation] = useState(false);
   const [activeTab, setActiveTab] = useState<'today' | 'triages' | 'history' | 'nueva-consulta'>('today');
   const [loading, setLoading] = useState(true);
+  const [savingConsultation, setSavingConsultation] = useState(false);
+  const [generatingPDF, setGeneratingPDF] = useState(false);
 
   const [newConsultation, setNewConsultation] = useState({
     pacienteId: '',
@@ -159,6 +162,7 @@ const ConsultorioDashboard: React.FC = () => {
 
   const handleCreateConsultation = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSavingConsultation(true);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/consultations`, {
@@ -171,9 +175,17 @@ const ConsultorioDashboard: React.FC = () => {
       });
       
       if (response.ok) {
+        const savedConsultation = await response.json();
         fetchConsultations();
         fetchPendingTriages();
         setShowNewConsultation(false);
+        
+        // Mostrar opción para generar PDF
+        const generatePDF = window.confirm('Consulta guardada exitosamente. ¿Desea generar la historia clínica en PDF?');
+        if (generatePDF) {
+          await handleGenerateConsultationPDF(savedConsultation);
+        }
+        
         setNewConsultation({
           pacienteId: '',
           triageId: '',
@@ -188,6 +200,105 @@ const ConsultorioDashboard: React.FC = () => {
       }
     } catch (error) {
       console.error('Error creating consultation:', error);
+    } finally {
+      setSavingConsultation(false);
+    }
+  };
+
+  const handleGenerateConsultationPDF = async (consultation: Consultation, includeTriageData?: PendingTriage) => {
+    setGeneratingPDF(true);
+    try {
+      // Obtener información del doctor
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Simular datos del doctor (en producción esto vendría de la API)
+      const doctorData = {
+        nombre: user.name?.split(' ')[0] || 'Doctor',
+        apellido: user.name?.split(' ').slice(1).join(' ') || 'Médico',
+        especialidad: 'Medicina General',
+        numeroLicencia: 'LIC-' + user.id?.toString().slice(-6) || 'LIC-123456',
+        consultorio: {
+          numero: '101',
+          nombre: 'Consultorio General'
+        }
+      };
+
+      // Generar PDF de historia clínica
+      const pdfBlob = await PDFGenerator.generateConsultationPDF(
+        consultation,
+        doctorData,
+        includeTriageData
+      );
+
+      // Descargar PDF
+      const fileName = `Historia_Clinica_${consultation.pacienteId.nombre}_${consultation.pacienteId.apellido}_${new Date().toISOString().split('T')[0]}.pdf`;
+      PDFGenerator.downloadPDF(pdfBlob, fileName);
+
+      // Guardar referencia del documento en la base de datos
+      await saveDocumentReference(consultation._id, 'historia_clinica', fileName, pdfBlob);
+
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Error al generar el PDF. Intente nuevamente.');
+    } finally {
+      setGeneratingPDF(false);
+    }
+  };
+
+  const handleGeneratePrescriptionPDF = async (consultation: Consultation) => {
+    if (consultation.medicamentos.length === 0) {
+      alert('Esta consulta no tiene medicamentos prescritos.');
+      return;
+    }
+
+    setGeneratingPDF(true);
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      const doctorData = {
+        nombre: user.name?.split(' ')[0] || 'Doctor',
+        apellido: user.name?.split(' ').slice(1).join(' ') || 'Médico',
+        especialidad: 'Medicina General',
+        numeroLicencia: 'LIC-' + user.id?.toString().slice(-6) || 'LIC-123456',
+        consultorio: {
+          numero: '101',
+          nombre: 'Consultorio General'
+        }
+      };
+
+      const pdfBlob = await PDFGenerator.generatePrescriptionPDF(consultation, doctorData);
+      
+      const fileName = `Receta_Medica_${consultation.pacienteId.nombre}_${consultation.pacienteId.apellido}_${new Date().toISOString().split('T')[0]}.pdf`;
+      PDFGenerator.downloadPDF(pdfBlob, fileName);
+
+      await saveDocumentReference(consultation._id, 'receta_medica', fileName, pdfBlob);
+
+    } catch (error) {
+      console.error('Error generating prescription PDF:', error);
+      alert('Error al generar la receta médica. Intente nuevamente.');
+    } finally {
+      setGeneratingPDF(false);
+    }
+  };
+
+  const saveDocumentReference = async (consultationId: string, documentType: string, fileName: string, pdfBlob: Blob) => {
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('document', pdfBlob, fileName);
+      formData.append('consultationId', consultationId);
+      formData.append('documentType', documentType);
+
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/consultation-documents/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+    } catch (error) {
+      console.error('Error saving document reference:', error);
     }
   };
 
@@ -481,6 +592,24 @@ const ConsultorioDashboard: React.FC = () => {
                         <Edit className="w-4 h-4" />
                         <span>Editar</span>
                       </button>
+                      <button 
+                        onClick={() => handleGenerateConsultationPDF(consultation)}
+                        disabled={generatingPDF}
+                        className="px-4 py-2 text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-colors flex items-center space-x-2 disabled:opacity-50"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Historia Clínica</span>
+                      </button>
+                      {consultation.medicamentos.length > 0 && (
+                        <button 
+                          onClick={() => handleGeneratePrescriptionPDF(consultation)}
+                          disabled={generatingPDF}
+                          className="px-4 py-2 text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors flex items-center space-x-2 disabled:opacity-50"
+                        >
+                          <Printer className="w-4 h-4" />
+                          <span>Receta</span>
+                        </button>
+                      )}
                       <button className="px-4 py-2 text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors flex items-center space-x-2">
                         <Eye className="w-4 h-4" />
                         <span>Ver Historial</span>
@@ -526,8 +655,9 @@ const ConsultorioDashboard: React.FC = () => {
                         <button
                           onClick={() => createConsultationFromTriage(triage)}
                           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                          disabled={savingConsultation}
                         >
-                          Iniciar Consulta
+                          {savingConsultation ? 'Procesando...' : 'Iniciar Consulta'}
                         </button>
                       </div>
                     </div>
@@ -962,13 +1092,24 @@ const ConsultorioDashboard: React.FC = () => {
                 </button>
                 <button
                   type="submit"
+                  disabled={savingConsultation}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
                 >
                   <Save className="w-4 h-4" />
-                  <span>Guardar Consulta</span>
+                  <span>{savingConsultation ? 'Guardando...' : 'Guardar Consulta'}</span>
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Loading overlay para PDF */}
+      {generatingPDF && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 flex items-center space-x-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="text-gray-700">Generando PDF...</span>
           </div>
         </div>
       )}
