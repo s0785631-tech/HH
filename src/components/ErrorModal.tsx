@@ -42,11 +42,22 @@ const ErrorModal: React.FC<ErrorModalProps> = ({
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
-    // Solo cerrar si no es persistente Y el clic fue en el backdrop
+    // Permitir cerrar con clic en backdrop solo si no es persistente
     if (e.target === e.currentTarget && !persistent) {
       handleClose();
     }
   };
+
+  // Auto-cerrar después de 5 segundos si no es persistente
+  useEffect(() => {
+    if (isOpen && !persistent) {
+      const timer = setTimeout(() => {
+        handleClose();
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, persistent]);
 
   if (!isVisible) return null;
 
@@ -69,15 +80,17 @@ const ErrorModal: React.FC<ErrorModalProps> = ({
         }}
       >
         {/* Close Button */}
-        <button
-          onClick={handleClose}
-          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200 hover:bg-gray-100 rounded-full"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {!persistent && (
+          <button
+            onClick={handleClose}
+            className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200 hover:bg-gray-100 rounded-full"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
 
         {/* Modal Content */}
-        <div className="px-8 py-8 text-center">
+        <div className={`px-8 py-8 text-center ${persistent ? 'pt-8' : 'pt-12'}`}>
           {/* Warning Icon */}
           <div className="mb-6 flex justify-center">
             <div className="relative">
@@ -108,6 +121,13 @@ const ErrorModal: React.FC<ErrorModalProps> = ({
           >
             {buttonText}
           </button>
+          
+          {/* Auto-close indicator */}
+          {!persistent && (
+            <p className="text-xs text-gray-500 mt-3">
+              Se cerrará automáticamente en 5 segundos
+            </p>
+          )}
         </div>
       </div>
 

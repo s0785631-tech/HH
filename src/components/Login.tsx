@@ -33,6 +33,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setShowErrorModal(false); // Cerrar modal anterior si existe
 
     try {
       if (isLogin) {
@@ -76,12 +77,22 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       }
     } catch (error: any) {
       console.error('Error en autenticación:', error);
+      
+      let errorMessage = '';
+      
       if (!isLogin && registerData.password !== registerData.confirmPassword) {
-        setError('Las contraseñas no coinciden');
+        errorMessage = 'Las contraseñas no coinciden';
+      } else if (error.code === 'NETWORK_ERROR' || error.message === 'Network Error') {
+        errorMessage = 'No se puede conectar con el servidor. Verifique que el backend esté funcionando.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Credenciales incorrectas. Verifique su número de identificación y contraseña.';
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.message || 'Datos inválidos. Verifique la información ingresada.';
       } else {
-        const errorMessage = error.response?.data?.message || 'Credenciales inválidas';
-        setError(errorMessage);
+        errorMessage = error.response?.data?.message || 'Error de conexión. Intente nuevamente.';
       }
+      
+      setError(errorMessage);
       setShowErrorModal(true);
     }
 
@@ -341,7 +352,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         title="¡Ups, parece que algo salió mal!"
         message={error || "Las credenciales proporcionadas no son válidas"}
         buttonText="Aceptar"
-        persistent={true}
+        persistent={false}
       />
 
       {/* Success Toast */}
