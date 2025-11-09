@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, TrendingUp, Activity, UserPlus, Stethoscope, Building2, BarChart3, Clock, CheckCircle, AlertTriangle, FileText, Settings, Eye, CreditCard as Edit, Trash2 } from 'lucide-react';
+import { Users, Calendar, TrendingUp, Activity, UserPlus, Stethoscope, Building2, BarChart3, Clock, CheckCircle, AlertTriangle, FileText, Settings, Eye, CreditCard as Edit, Trash2, Plus, X } from 'lucide-react';
 import ErrorModal from '../ErrorModal';
 import SuccessToast from '../SuccessToast';
 import { PDFGenerator } from '../../utils/pdfGenerator';
@@ -36,6 +36,35 @@ interface DashboardStats {
   monthlyConsultations: number;
 }
 
+interface Especialidad {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  activa: boolean;
+}
+
+interface Consultorio {
+  id: string;
+  numero: string;
+  nombre: string;
+  ubicacion: string;
+  equipamiento: string[];
+  activo: boolean;
+}
+
+interface Patient {
+  _id: string;
+  nombre: string;
+  apellido: string;
+  cedula: string;
+  fechaNacimiento: string;
+  telefono: string;
+  genero: 'M' | 'F';
+  direccion?: string;
+  email?: string;
+  ultimaConsulta?: string;
+}
+
 const EmpresaDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats>({
     totalPatients: 0,
@@ -46,8 +75,23 @@ const EmpresaDashboard: React.FC = () => {
     monthlyConsultations: 0
   });
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [especialidades, setEspecialidades] = useState<Especialidad[]>([
+    { id: '1', nombre: 'Medicina General', descripcion: 'Atención médica general', activa: true },
+    { id: '2', nombre: 'Cardiología', descripcion: 'Especialidad del corazón', activa: true },
+    { id: '3', nombre: 'Pediatría', descripcion: 'Medicina infantil', activa: true },
+    { id: '4', nombre: 'Ginecología', descripcion: 'Salud femenina', activa: true },
+    { id: '5', nombre: 'Dermatología', descripcion: 'Enfermedades de la piel', activa: true }
+  ]);
+  const [consultorios, setConsultorios] = useState<Consultorio[]>([
+    { id: '1', numero: '101', nombre: 'Consultorio Principal', ubicacion: 'Primer Piso', equipamiento: ['Camilla', 'Tensiómetro', 'Estetoscopio'], activo: true },
+    { id: '2', numero: '102', nombre: 'Consultorio Cardiología', ubicacion: 'Primer Piso', equipamiento: ['ECG', 'Monitor Cardíaco'], activo: true },
+    { id: '3', numero: '201', nombre: 'Consultorio Pediatría', ubicacion: 'Segundo Piso', equipamiento: ['Báscula Pediátrica', 'Tallímetro'], activo: true },
+    { id: '4', numero: '202', nombre: 'Consultorio Ginecología', ubicacion: 'Segundo Piso', equipamiento: ['Mesa Ginecológica', 'Colposcopio'], activo: true }
+  ]);
+  
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'doctores' | 'nuevo-doctor' | 'reportes'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'doctores' | 'nuevo-doctor' | 'reportes' | 'especialidades' | 'consultorios' | 'pacientes'>('dashboard');
   
   // Estados para modales y notificaciones
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -55,6 +99,8 @@ const EmpresaDashboard: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [showNewDoctorModal, setShowNewDoctorModal] = useState(false);
+  const [showEspecialidadModal, setShowEspecialidadModal] = useState(false);
+  const [showConsultorioModal, setShowConsultorioModal] = useState(false);
 
   const [newDoctor, setNewDoctor] = useState({
     nombre: '',
@@ -80,9 +126,24 @@ const EmpresaDashboard: React.FC = () => {
     ]
   });
 
+  const [newEspecialidad, setNewEspecialidad] = useState({
+    nombre: '',
+    descripcion: '',
+    activa: true
+  });
+
+  const [newConsultorio, setNewConsultorio] = useState({
+    numero: '',
+    nombre: '',
+    ubicacion: '',
+    equipamiento: [''],
+    activo: true
+  });
+
   useEffect(() => {
     fetchStats();
     fetchDoctors();
+    fetchPatients();
     
     // Escuchar acciones del menú
     const handleMenuAction = (event: any) => {
@@ -149,6 +210,66 @@ const EmpresaDashboard: React.FC = () => {
     }
   };
 
+  const fetchPatients = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/patients`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPatients(data);
+      } else {
+        // Datos simulados para demostración
+        const mockPatients: Patient[] = [
+          {
+            _id: '1',
+            nombre: 'María',
+            apellido: 'González',
+            cedula: '12345678',
+            fechaNacimiento: '1985-05-15',
+            telefono: '555-0123',
+            genero: 'F',
+            direccion: 'Calle 123 #45-67',
+            email: 'maria.gonzalez@email.com',
+            ultimaConsulta: new Date().toISOString()
+          },
+          {
+            _id: '2',
+            nombre: 'Carlos',
+            apellido: 'Rodríguez',
+            cedula: '87654321',
+            fechaNacimiento: '1978-12-03',
+            telefono: '555-0456',
+            genero: 'M',
+            direccion: 'Avenida 456 #78-90',
+            email: 'carlos.rodriguez@email.com',
+            ultimaConsulta: new Date(Date.now() - 86400000).toISOString()
+          },
+          {
+            _id: '3',
+            nombre: 'Ana',
+            apellido: 'Martínez',
+            cedula: '11223344',
+            fechaNacimiento: '1990-08-20',
+            telefono: '555-0789',
+            genero: 'F',
+            direccion: 'Carrera 789 #12-34',
+            email: 'ana.martinez@email.com',
+            ultimaConsulta: new Date(Date.now() - 172800000).toISOString()
+          }
+        ];
+        setPatients(mockPatients);
+      }
+    } catch (error) {
+      console.error('Error fetching patients:', error);
+      setPatients([]);
+    }
+  };
+
   const handleCreateDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -210,10 +331,100 @@ const EmpresaDashboard: React.FC = () => {
     }
   };
 
+  const handleCreateEspecialidad = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const nuevaEspecialidad: Especialidad = {
+      id: Date.now().toString(),
+      ...newEspecialidad
+    };
+    
+    setEspecialidades([...especialidades, nuevaEspecialidad]);
+    setShowEspecialidadModal(false);
+    setNewEspecialidad({
+      nombre: '',
+      descripcion: '',
+      activa: true
+    });
+    
+    setSuccessMessage('¡Especialidad agregada exitosamente!');
+    setShowSuccessToast(true);
+  };
+
+  const handleCreateConsultorio = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const nuevoConsultorio: Consultorio = {
+      id: Date.now().toString(),
+      ...newConsultorio,
+      equipamiento: newConsultorio.equipamiento.filter(eq => eq.trim() !== '')
+    };
+    
+    setConsultorios([...consultorios, nuevoConsultorio]);
+    setShowConsultorioModal(false);
+    setNewConsultorio({
+      numero: '',
+      nombre: '',
+      ubicacion: '',
+      equipamiento: [''],
+      activo: true
+    });
+    
+    setSuccessMessage('¡Consultorio agregado exitosamente!');
+    setShowSuccessToast(true);
+  };
+
   const updateHorario = (index: number, field: string, value: any) => {
     const updatedHorarios = [...newDoctor.horarios];
     updatedHorarios[index] = { ...updatedHorarios[index], [field]: value };
     setNewDoctor({ ...newDoctor, horarios: updatedHorarios });
+  };
+
+  const addEquipamiento = () => {
+    setNewConsultorio({
+      ...newConsultorio,
+      equipamiento: [...newConsultorio.equipamiento, '']
+    });
+  };
+
+  const removeEquipamiento = (index: number) => {
+    const updatedEquipamiento = newConsultorio.equipamiento.filter((_, i) => i !== index);
+    setNewConsultorio({
+      ...newConsultorio,
+      equipamiento: updatedEquipamiento
+    });
+  };
+
+  const updateEquipamiento = (index: number, value: string) => {
+    const updatedEquipamiento = [...newConsultorio.equipamiento];
+    updatedEquipamiento[index] = value;
+    setNewConsultorio({
+      ...newConsultorio,
+      equipamiento: updatedEquipamiento
+    });
+  };
+
+  const toggleEspecialidad = (id: string) => {
+    setEspecialidades(especialidades.map(esp => 
+      esp.id === id ? { ...esp, activa: !esp.activa } : esp
+    ));
+  };
+
+  const toggleConsultorio = (id: string) => {
+    setConsultorios(consultorios.map(cons => 
+      cons.id === id ? { ...cons, activo: !cons.activo } : cons
+    ));
+  };
+
+  const calculateAge = (birthDate: string) => {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
   };
 
   const generateReport = () => {
@@ -300,7 +511,37 @@ const EmpresaDashboard: React.FC = () => {
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Gestión de Doctores
+                Doctores
+              </button>
+              <button
+                onClick={() => setActiveTab('especialidades')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'especialidades'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Especialidades
+              </button>
+              <button
+                onClick={() => setActiveTab('consultorios')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'consultorios'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Consultorios
+              </button>
+              <button
+                onClick={() => setActiveTab('pacientes')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'pacientes'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Pacientes
               </button>
               <button
                 onClick={() => setActiveTab('reportes')}
@@ -310,7 +551,7 @@ const EmpresaDashboard: React.FC = () => {
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Reportes y Estadísticas
+                Reportes
               </button>
             </nav>
           </div>
@@ -564,6 +805,215 @@ const EmpresaDashboard: React.FC = () => {
           </div>
         )}
 
+        {activeTab === 'especialidades' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">Gestión de Especialidades</h2>
+                <button
+                  onClick={() => setShowEspecialidadModal(true)}
+                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Nueva Especialidad</span>
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {especialidades.map((especialidad) => (
+                  <div key={especialidad.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{especialidad.nombre}</h3>
+                        <p className="text-sm text-gray-600 mt-1">{especialidad.descripcion}</p>
+                      </div>
+                      <button
+                        onClick={() => toggleEspecialidad(especialidad.id)}
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          especialidad.activa 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {especialidad.activa ? 'Activa' : 'Inactiva'}
+                      </button>
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      <button className="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm">
+                        Editar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'consultorios' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">Gestión de Consultorios</h2>
+                <button
+                  onClick={() => setShowConsultorioModal(true)}
+                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Nuevo Consultorio</span>
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {consultorios.map((consultorio) => (
+                  <div key={consultorio.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-blue-100 p-3 rounded-full">
+                          <Building2 className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">
+                            Consultorio {consultorio.numero}
+                          </h3>
+                          <p className="text-sm text-gray-600">{consultorio.nombre}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => toggleConsultorio(consultorio.id)}
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          consultorio.activo 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {consultorio.activo ? 'Activo' : 'Inactivo'}
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <span>📍</span>
+                        <span>{consultorio.ubicacion}</span>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        <span className="font-medium">Equipamiento:</span>
+                        <ul className="mt-1 ml-4">
+                          {consultorio.equipamiento.map((equipo, index) => (
+                            <li key={index} className="text-xs">• {equipo}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      <button className="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm">
+                        Editar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'pacientes' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Pacientes Atendidos</h2>
+            </div>
+            
+            <div className="p-6">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Paciente
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Cédula
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Edad
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Contacto
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Última Consulta
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Acciones
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {patients.map((patient) => (
+                      <tr key={patient._id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10">
+                              <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+                                <span className="text-sm font-medium text-purple-600">
+                                  {patient.nombre.charAt(0)}{patient.apellido.charAt(0)}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {patient.nombre} {patient.apellido}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {patient.genero === 'M' ? 'Masculino' : 'Femenino'}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {patient.cedula}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {calculateAge(patient.fechaNacimiento)} años
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{patient.telefono}</div>
+                          <div className="text-sm text-gray-500">{patient.email}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {patient.ultimaConsulta ? 
+                            new Date(patient.ultimaConsulta).toLocaleDateString('es-ES') : 
+                            'Sin consultas'
+                          }
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button className="text-purple-600 hover:text-purple-900">
+                            Ver Historial
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {patients.length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No hay pacientes registrados</h3>
+                  <p className="text-gray-600">Los pacientes aparecerán aquí una vez que sean atendidos</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'reportes' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200">
@@ -670,13 +1120,19 @@ const EmpresaDashboard: React.FC = () => {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Especialidad *</label>
-                    <input
-                      type="text"
+                    <select
                       required
                       value={newDoctor.especialidad}
                       onChange={(e) => setNewDoctor({...newDoctor, especialidad: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
+                    >
+                      <option value="">Seleccionar especialidad</option>
+                      {especialidades.filter(esp => esp.activa).map((especialidad) => (
+                        <option key={especialidad.id} value={especialidad.nombre}>
+                          {especialidad.nombre}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   
                   <div>
@@ -734,33 +1190,28 @@ const EmpresaDashboard: React.FC = () => {
               {/* Consultorio */}
               <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Consultorio</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Número *</label>
-                    <input
-                      type="text"
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Consultorio *</label>
+                    <select
                       required
-                      value={newDoctor.consultorio.numero}
-                      onChange={(e) => setNewDoctor({
-                        ...newDoctor, 
-                        consultorio: {...newDoctor.consultorio, numero: e.target.value}
-                      })}
+                      value={`${newDoctor.consultorio.numero}|${newDoctor.consultorio.nombre}`}
+                      onChange={(e) => {
+                        const [numero, nombre] = e.target.value.split('|');
+                        setNewDoctor({
+                          ...newDoctor, 
+                          consultorio: { numero, nombre }
+                        });
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Nombre *</label>
-                    <input
-                      type="text"
-                      required
-                      value={newDoctor.consultorio.nombre}
-                      onChange={(e) => setNewDoctor({
-                        ...newDoctor, 
-                        consultorio: {...newDoctor.consultorio, nombre: e.target.value}
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
+                    >
+                      <option value="">Seleccionar consultorio</option>
+                      {consultorios.filter(cons => cons.activo).map((consultorio) => (
+                        <option key={consultorio.id} value={`${consultorio.numero}|${consultorio.nombre}`}>
+                          Consultorio {consultorio.numero} - {consultorio.nombre}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -826,6 +1277,176 @@ const EmpresaDashboard: React.FC = () => {
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                 >
                   Crear Doctor
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Nueva Especialidad Modal */}
+      {showEspecialidadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Nueva Especialidad</h2>
+            </div>
+            
+            <form onSubmit={handleCreateEspecialidad} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nombre *</label>
+                <input
+                  type="text"
+                  required
+                  value={newEspecialidad.nombre}
+                  onChange={(e) => setNewEspecialidad({...newEspecialidad, nombre: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Descripción *</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={newEspecialidad.descripcion}
+                  onChange={(e) => setNewEspecialidad({...newEspecialidad, descripcion: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={newEspecialidad.activa}
+                  onChange={(e) => setNewEspecialidad({...newEspecialidad, activa: e.target.checked})}
+                  className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                />
+                <span className="text-sm text-gray-700">Especialidad activa</span>
+              </div>
+              
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEspecialidadModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  Crear Especialidad
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Nuevo Consultorio Modal */}
+      {showConsultorioModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Nuevo Consultorio</h2>
+            </div>
+            
+            <form onSubmit={handleCreateConsultorio} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Número *</label>
+                <input
+                  type="text"
+                  required
+                  value={newConsultorio.numero}
+                  onChange={(e) => setNewConsultorio({...newConsultorio, numero: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nombre *</label>
+                <input
+                  type="text"
+                  required
+                  value={newConsultorio.nombre}
+                  onChange={(e) => setNewConsultorio({...newConsultorio, nombre: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ubicación *</label>
+                <input
+                  type="text"
+                  required
+                  value={newConsultorio.ubicacion}
+                  onChange={(e) => setNewConsultorio({...newConsultorio, ubicacion: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">Equipamiento</label>
+                  <button
+                    type="button"
+                    onClick={addEquipamiento}
+                    className="bg-green-100 text-green-700 px-2 py-1 rounded-md hover:bg-green-200 transition-colors text-sm flex items-center space-x-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Agregar</span>
+                  </button>
+                </div>
+                
+                <div className="space-y-2">
+                  {newConsultorio.equipamiento.map((equipo, index) => (
+                    <div key={index} className="flex space-x-2">
+                      <input
+                        type="text"
+                        value={equipo}
+                        onChange={(e) => updateEquipamiento(index, e.target.value)}
+                        placeholder="Nombre del equipo"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                      {newConsultorio.equipamiento.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeEquipamiento(index)}
+                          className="bg-red-100 text-red-700 px-2 py-2 rounded-lg hover:bg-red-200 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={newConsultorio.activo}
+                  onChange={(e) => setNewConsultorio({...newConsultorio, activo: e.target.checked})}
+                  className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                />
+                <span className="text-sm text-gray-700">Consultorio activo</span>
+              </div>
+              
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowConsultorioModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  Crear Consultorio
                 </button>
               </div>
             </form>
