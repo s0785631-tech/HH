@@ -81,5 +81,15 @@ export const useAPI = () => {
       create: (data: any) => handleRequest(() => doctorsAPI.create(data)),
       update: (id: string, data: any) => handleRequest(() => doctorsAPI.update(id, data)),
     },
+
+    patientAssignments: {
+      getAll: (params?: any) => handleRequest(() => patientAssignmentsAPI.getAll(params)),
+      getDoctorAssignments: (params?: any) => handleRequest(() => patientAssignmentsAPI.getDoctorAssignments(params)),
+      getNewAssignments: (lastCheck?: string) => handleRequest(() => patientAssignmentsAPI.getNewAssignments(lastCheck)),
+      create: (data: any) => handleRequest(() => patientAssignmentsAPI.create(data)),
+      update: (id: string, data: any) => handleRequest(() => patientAssignmentsAPI.update(id, data)),
+      delete: (id: string) => handleRequest(() => patientAssignmentsAPI.delete(id)),
+      getStats: () => handleRequest(() => patientAssignmentsAPI.getStats()),
+    },
   };
 };

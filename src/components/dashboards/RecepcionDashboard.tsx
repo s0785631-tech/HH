@@ -14,7 +14,9 @@ interface Patient {
     proximaCita?: {
       fecha: string;
       hora: string;
-      medicoNombre: string;
+  X,
+  Stethoscope,
+  User
       estado: string;
     };
     ultimaAsistencia?: {
@@ -43,6 +45,27 @@ interface Appointment {
 
 interface Doctor {
   _id: string;
+interface Doctor {
+  _id: string;
+  nombre: string;
+  apellido: string;
+  especialidad: string;
+  consultorio: {
+    numero: string;
+    nombre: string;
+  };
+  isActive: boolean;
+}
+
+interface PatientAssignment {
+  _id?: string;
+  pacienteId: string;
+  medicoId: string;
+  motivoConsulta: string;
+  prioridad: 'alta' | 'media' | 'baja';
+  observaciones?: string;
+}
+
   nombre: string;
   apellido: string;
   especialidad: string;
@@ -60,15 +83,17 @@ interface Doctor {
 
 const RecepcionDashboard: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [availableHours, setAvailableHours] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'pacientes' | 'citas' | 'nueva-cita' | 'asignar-paciente'>('pacientes');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showNewAppointment, setShowNewAppointment] = useState(false);
   const [showNewPatient, setShowNewPatient] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'citas' | 'pacientes' | 'buscar'>('citas');
+  const [showAssignPatientModal, setShowAssignPatientModal] = useState(false);
   
   // Estados para notificaciones
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -100,6 +125,14 @@ const RecepcionDashboard: React.FC = () => {
     direccion: '',
     genero: 'M' as 'M' | 'F',
     contactoEmergencia: {
+  const [newAssignment, setNewAssignment] = useState<PatientAssignment>({
+    pacienteId: '',
+    medicoId: '',
+    motivoConsulta: '',
+    prioridad: 'media',
+    observaciones: ''
+  });
+
       nombre: '',
       telefono: '',
       relacion: ''
@@ -108,6 +141,7 @@ const RecepcionDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchAppointments();
+    fetchDoctors();
     fetchPatients();
     fetchDoctors();
     
@@ -126,6 +160,10 @@ const RecepcionDashboard: React.FC = () => {
           break;
         case 'gestionar-citas':
           setActiveTab('citas');
+          break;
+        case 'asignar-paciente':
+          setActiveTab('asignar-paciente');
+          setShowAssignPatientModal(true);
           break;
       }
     };
@@ -159,6 +197,27 @@ const RecepcionDashboard: React.FC = () => {
       console.error('Error fetching appointments:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDoctors = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/doctors`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setDoctors(data);
+      } else {
+        setDoctors([]);
+      }
+    } catch (error) {
+      console.error('Error fetching doctors:', error);
+      setDoctors([]);
     }
   };
 

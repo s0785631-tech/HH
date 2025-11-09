@@ -10,6 +10,7 @@ const consultationRoutes = require('./routes/consultations');
 const dashboardRoutes = require('./routes/dashboard');
 const doctorRoutes = require('./routes/doctors');
 const consultationDocumentRoutes = require('./routes/consultationDocuments');
+const patientAssignmentRoutes = require('./routes/patientAssignments');
 
 dotenv.config();
 
@@ -54,6 +55,7 @@ app.use('/api/consultations', consultationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/consultation-documents', consultationDocumentRoutes);
+app.use('/api/patient-assignments', patientAssignmentRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

@@ -98,4 +98,14 @@ export const doctorsAPI = {
   update: (id: string, data: any) => api.put(`/doctors/${id}`, data),
 };
 
+export const patientAssignmentsAPI = {
+  getAll: (params?: any) => api.get('/patient-assignments', { params }),
+  getDoctorAssignments: (params?: any) => api.get('/patient-assignments/doctor', { params }),
+  getNewAssignments: (lastCheck?: string) => api.get('/patient-assignments/doctor/new', { params: { lastCheck } }),
+  create: (data: any) => api.post('/patient-assignments', data),
+  update: (id: string, data: any) => api.put(`/patient-assignments/${id}`, data),
+  delete: (id: string) => api.delete(`/patient-assignments/${id}`),
+  getStats: () => api.get('/patient-assignments/stats/doctor'),
+};
+
 export default api;

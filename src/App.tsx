@@ -5,6 +5,7 @@ import EmpresaDashboard from './components/dashboards/EmpresaDashboard';
 import RecepcionDashboard from './components/dashboards/RecepcionDashboard';
 import ConsultorioDashboard from './components/dashboards/ConsultorioDashboard';
 import EnfermeriaDashboard from './components/dashboards/EnfermeriaDashboard';
+import DoctorDashboard from './components/dashboards/DoctorDashboard';
 import Login from './components/Login';
 
 const getRoleColor = (role: string) => {
@@ -13,6 +14,7 @@ const getRoleColor = (role: string) => {
     case 'recepcion': return 'from-green-500 to-green-700';
     case 'consultorio': return 'from-blue-500 to-blue-700';
     case 'enfermeria': return 'from-red-500 to-red-700';
+    case 'doctor': return 'from-teal-500 to-teal-700';
     default: return 'from-gray-500 to-gray-700';
   }
 };
@@ -80,6 +82,8 @@ function App() {
         return <ConsultorioDashboard />;
       case 'enfermeria':
         return <EnfermeriaDashboard />;
+      case 'doctor':
+        return <DoctorDashboard />;
       default:
         return <Login onLogin={handleLogin} />;
     }

@@ -48,6 +48,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ userRole, onLogout, onMenuAction })
       case 'recepcion': return 'from-green-500 to-green-700';
       case 'consultorio': return 'from-blue-500 to-blue-700';
       case 'enfermeria': return 'from-red-500 to-red-700';
+      case 'doctor': return 'from-teal-500 to-teal-700';
       default: return 'from-gray-500 to-gray-700';
     }
   };
@@ -58,6 +59,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ userRole, onLogout, onMenuAction })
       case 'recepcion': return 'Recepción';
       case 'consultorio': return 'Consultorio Médico';
       case 'enfermeria': return 'Enfermería - Triaje';
+      case 'doctor': return 'Médico Especialista';
       default: return role;
     }
   };
@@ -123,6 +125,25 @@ const UserMenu: React.FC<UserMenuProps> = ({ userRole, onLogout, onMenuAction })
             items: [
               { title: 'Nuevo Triaje', icon: Heart, action: () => onMenuAction('nuevo-triaje') },
               { title: 'Triajes del Día', icon: Activity, action: () => onMenuAction('triajes-dia') }
+            ]
+          }
+        ];
+      case 'doctor':
+        return [
+          {
+            title: 'Pacientes',
+            icon: Users,
+            items: [
+              { title: 'Pacientes Asignados', icon: Users, action: () => onMenuAction('pacientes-asignados') },
+              { title: 'Consultas del Día', icon: Stethoscope, action: () => onMenuAction('consultas-dia') }
+            ]
+          },
+          {
+            title: 'Consultas',
+            icon: FileText,
+            items: [
+              { title: 'Historial', icon: FileText, action: () => onMenuAction('historial-consultas') },
+              { title: 'Generar Reportes', icon: BarChart3, action: () => onMenuAction('generar-reportes') }
             ]
           }
         ];

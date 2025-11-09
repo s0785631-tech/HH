@@ -44,6 +44,37 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // Verificar si es un doctor registrado
+    const Doctor = require('../models/Doctor');
+    const doctor = await Doctor.findOne({ cedula: cedula }).populate('userId');
+    
+    if (doctor && doctor.userId) {
+      const isValidPassword = await bcrypt.compare(password, doctor.userId.password);
+      
+      if (isValidPassword) {
+        const token = jwt.sign(
+          { userId: doctor.userId._id, role: 'doctor' },
+          process.env.JWT_SECRET || 'secret',
+          { expiresIn: '8h' }
+        );
+
+        console.log('Doctor login successful:', doctor.cedula);
+        return res.json({
+          token,
+          user: {
+            id: doctor.userId._id,
+            name: doctor.userId.name,
+            role: 'doctor',
+            doctorInfo: {
+              especialidad: doctor.especialidad,
+              numeroLicencia: doctor.numeroLicencia,
+              consultorio: doctor.consultorio
+            }
+          }
+        });
+      }
+    }
+
     // Si no existe en la base de datos, crear usuarios por defecto si es necesario
     const mockUsers = [
       { cedula: '12345678', password: '12345678', role: 'empresa', name: 'Director General', email: 'empresa@saviser.com' },

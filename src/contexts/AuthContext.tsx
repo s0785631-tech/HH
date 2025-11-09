@@ -1,4 +1,4 @@
-export type UserRole = 'empresa' | 'recepcion' | 'consultorio' | 'enfermeria';
+export type UserRole = 'empresa' | 'recepcion' | 'consultorio' | 'enfermeria' | 'doctor';
 
 export const mockUsers = [
   { email: 'empresa@saviser.com', password: 'empresa123', role: 'empresa' as UserRole, name: 'Director General' },
@@ -17,6 +17,8 @@ export const getRoleDisplayName = (role: UserRole): string => {
       return 'Consultorio Médico';
     case 'enfermeria':
       return 'Enfermería - Triaje';
+    case 'doctor':
+      return 'Médico Especialista';
     default:
       return role;
   }
