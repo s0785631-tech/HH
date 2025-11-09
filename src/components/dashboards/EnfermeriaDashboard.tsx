@@ -678,22 +678,12 @@ const EnfermeriaDashboard: React.FC = () => {
                           <Download className="w-3 h-3" />
                           <span>PDF</span>
                         </button>
-                        {triaje.estado === 'pendiente' && (
-                          <button
-                            onClick={() => actualizarEstado(triaje._id!, 'en_proceso')}
-                            className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm"
-                          >
-                            Iniciar
-                          </button>
-                        )}
-                        {triaje.estado === 'en_proceso' && (
-                          <button
-                            onClick={() => actualizarEstado(triaje._id!, 'completado')}
-                            className="px-3 py-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm"
-                          >
-                            Completar
-                          </button>
-                        )}
+                        {/* Solo mostrar información del estado, no botón para cambiar */}
+                        <div className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm">
+                          {triaje.estado === 'pendiente' && 'Esperando Doctor'}
+                          {triaje.estado === 'en_proceso' && 'En Consulta'}
+                          {triaje.estado === 'completado' && 'Completado por Doctor'}
+                        </div>
                       </div>
                     </div>
                   </div>

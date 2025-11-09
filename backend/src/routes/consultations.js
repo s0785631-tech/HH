@@ -41,10 +41,12 @@ router.get('/', authMiddleware, async (req, res) => {
 // Get pending triages for consultations
 router.get('/pending-triages', authMiddleware, async (req, res) => {
   try {
+    // Obtener triajes que están completados por enfermería pero no han sido usados en consultas
+    const usedTriageIds = await Consultation.distinct('triageId');
+    
     const triages = await Triage.find({ 
-      estado: 'completado',
-      // Only triages that haven't been used in consultations yet
-      _id: { $nin: await Consultation.distinct('triageId') }
+      estado: { $in: ['completado', 'pendiente'] }, // Incluir pendientes y completados
+      _id: { $nin: usedTriageIds } // Excluir los ya usados en consultas
     })
     .populate('pacienteId', 'nombre apellido cedula fechaNacimiento')
     .sort({ fechaHora: -1 });

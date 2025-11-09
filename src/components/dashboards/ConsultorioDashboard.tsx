@@ -189,6 +189,8 @@ const ConsultorioDashboard: React.FC = () => {
   };
 
   const handleStartConsultation = (triage: TriageData) => {
+    // Actualizar el estado del triaje a "en_proceso" cuando el doctor lo toma
+    updateTriageStatus(triage._id, 'en_proceso');
     setSelectedTriage(triage);
     setNewConsultation({
       ...newConsultation,
@@ -268,6 +270,12 @@ const ConsultorioDashboard: React.FC = () => {
       
       if (response.ok) {
         const savedConsultation = await response.json();
+        
+        // Marcar el triaje como completado cuando se guarda la consulta
+        if (selectedTriage) {
+          await updateTriageStatus(selectedTriage._id, 'completado');
+        }
+        
         fetchConsultations();
         fetchPendingTriages();
         setShowNewConsultation(false);
@@ -300,6 +308,22 @@ const ConsultorioDashboard: React.FC = () => {
       console.error('Error saving consultation:', error);
       setErrorMessage('Error de conexión. Verifique su conexión a internet.');
       setShowErrorModal(true);
+    }
+  };
+
+  const updateTriageStatus = async (triageId: string, newStatus: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/triage/${triageId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ estado: newStatus })
+      });
+    } catch (error) {
+      console.error('Error updating triage status:', error);
     }
   };
 
