@@ -1202,6 +1202,29 @@ const RecepcionDashboard: React.FC = () => {
             </form>
           </div>
         </div>
+        {activeTab === 'asignar-paciente' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Asignar Paciente a Médico</h2>
+              <p className="text-sm text-gray-600">Asigne un paciente directamente a un médico especialista</p>
+            </div>
+            
+            <div className="p-6">
+              <button
+                onClick={() => setShowAssignPatientModal(true)}
+                className="w-full p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors flex flex-col items-center space-y-3"
+              >
+                <div className="bg-green-100 p-3 rounded-full">
+                  <User className="w-8 h-8 text-green-600" />
+                </div>
+                <div className="text-center">
+                  <h3 className="text-lg font-medium text-gray-900">Asignar Nuevo Paciente</h3>
+                  <p className="text-gray-600">Seleccione un paciente y asígnelo a un médico especialista</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
       )}
 
       {/* New Patient Modal */}
