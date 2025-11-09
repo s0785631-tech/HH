@@ -93,7 +93,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ userRole, onLogout, onMenuAction })
             icon: Users,
             items: [
               { title: 'Nuevo Paciente', icon: UserPlus, action: () => onMenuAction('nuevo-paciente') },
-              { title: 'Buscar Pacientes', icon: Users, action: () => onMenuAction('buscar-pacientes') }
+              { title: 'Buscar Pacientes', icon: Users, action: () => onMenuAction('buscar-pacientes') },
             ]
           },
           {
