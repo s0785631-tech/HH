@@ -7,18 +7,22 @@ const router = express.Router();
 // Get appointments
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { fecha, estado } = req.query;
+    const { fecha, estado, pacienteId } = req.query;
     let filter = {};
-    
+
     if (fecha) {
       const startDate = new Date(fecha);
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + 1);
       filter.fecha = { $gte: startDate, $lt: endDate };
     }
-    
+
     if (estado) {
       filter.estado = estado;
+    }
+
+    if (pacienteId) {
+      filter.pacienteId = pacienteId;
     }
 
     const appointments = await Appointment.find(filter)
@@ -31,7 +35,7 @@ router.get('/', authMiddleware, async (req, res) => {
         }
       })
       .sort({ fecha: 1, hora: 1 });
-    
+
     // Transform the response to match expected format
     const transformedAppointments = appointments.map(appointment => ({
       ...appointment.toObject(),
@@ -40,7 +44,7 @@ router.get('/', authMiddleware, async (req, res) => {
         name: appointment.medicoId.userId ? appointment.medicoId.userId.name : `Dr. ${appointment.medicoId.nombre} ${appointment.medicoId.apellido}`
       }
     }));
-    
+
     res.json(transformedAppointments);
   } catch (error) {
     console.error('Error fetching appointments:', error);

@@ -10,6 +10,22 @@ interface Patient {
   cedula: string;
   telefono: string;
   email?: string;
+  appointmentHistory?: {
+    proximaCita?: {
+      fecha: string;
+      hora: string;
+      medicoNombre: string;
+      estado: string;
+    };
+    ultimaAsistencia?: {
+      fecha: string;
+      estado: string;
+    };
+    totalCitas: number;
+    citasCompletadas: number;
+    citasCanceladas: number;
+    citasNoAsistio: number;
+  };
 }
 
 interface Appointment {
@@ -64,6 +80,7 @@ const RecepcionDashboard: React.FC = () => {
   const [searchCedulaCita, setSearchCedulaCita] = useState('');
   const [foundPatient, setFoundPatient] = useState<Patient | null>(null);
   const [searchingPatient, setSearchingPatient] = useState(false);
+  const [patientAppointments, setPatientAppointments] = useState<Appointment[]>([]);
 
   const [newAppointment, setNewAppointment] = useState({
     pacienteId: '',
@@ -243,21 +260,27 @@ const RecepcionDashboard: React.FC = () => {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         if (data.length > 0) {
-          setFoundPatient(data[0]);
-          setNewAppointment({...newAppointment, pacienteId: data[0]._id});
+          const patient = data[0];
+          setFoundPatient(patient);
+          setNewAppointment({...newAppointment, pacienteId: patient._id});
+
+          // Buscar historial de citas del paciente
+          await fetchPatientAppointmentHistory(patient._id);
         } else {
           setFoundPatient(null);
           setNewAppointment({...newAppointment, pacienteId: ''});
+          setPatientAppointments([]);
           setErrorMessage('No se encontró ningún paciente con ese número de identificación');
           setShowErrorModal(true);
         }
       } else {
         setFoundPatient(null);
         setNewAppointment({...newAppointment, pacienteId: ''});
+        setPatientAppointments([]);
         setErrorMessage('Error al buscar el paciente. Intente nuevamente.');
         setShowErrorModal(true);
       }
@@ -265,10 +288,32 @@ const RecepcionDashboard: React.FC = () => {
       console.error('Error searching patient:', error);
       setFoundPatient(null);
       setNewAppointment({...newAppointment, pacienteId: ''});
+      setPatientAppointments([]);
       setErrorMessage('Error de conexión. Verifique su conexión a internet.');
       setShowErrorModal(true);
     } finally {
       setSearchingPatient(false);
+    }
+  };
+
+  const fetchPatientAppointmentHistory = async (patientId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/appointments?pacienteId=${patientId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPatientAppointments(data);
+      } else {
+        setPatientAppointments([]);
+      }
+    } catch (error) {
+      console.error('Error fetching patient appointment history:', error);
+      setPatientAppointments([]);
     }
   };
 
@@ -317,20 +362,54 @@ const RecepcionDashboard: React.FC = () => {
 
   const handleCreateAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!foundPatient) {
       setErrorMessage('Debe buscar y seleccionar un paciente válido antes de crear la cita');
       setShowErrorModal(true);
       return;
     }
 
+    // Validar que la fecha no sea pasada
+    const selectedDateTime = new Date(`${newAppointment.fecha}T${newAppointment.hora}`);
+    const now = new Date();
+
+    if (selectedDateTime < now) {
+      setErrorMessage('No se pueden agendar citas en fechas u horas pasadas');
+      setShowErrorModal(true);
+      return;
+    }
+
+    // Validar que la hora esté dentro del horario del médico
+    const selectedDoctor = doctors.find(d => d._id === newAppointment.medicoId);
+    if (selectedDoctor) {
+      const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+      const fechaObj = new Date(newAppointment.fecha);
+      const diaSemana = diasSemana[fechaObj.getDay()];
+
+      const horarioDelDia = selectedDoctor.horarios.find(h => h.dia === diaSemana && h.activo);
+
+      if (!horarioDelDia) {
+        setErrorMessage('El doctor no tiene horario disponible para el día seleccionado');
+        setShowErrorModal(true);
+        return;
+      }
+
+      // Validar que la hora esté dentro del rango
+      const horaSeleccionada = newAppointment.hora;
+      if (horaSeleccionada < horarioDelDia.horaInicio || horaSeleccionada >= horarioDelDia.horaFin) {
+        setErrorMessage(`La hora seleccionada debe estar entre ${horarioDelDia.horaInicio} y ${horarioDelDia.horaFin}`);
+        setShowErrorModal(true);
+        return;
+      }
+    }
+
     try {
       const token = localStorage.getItem('token');
       const appointmentData = {
         ...newAppointment,
-        medicoId: newAppointment.medicoId // Ahora es el ID del doctor
+        medicoId: newAppointment.medicoId
       };
-      
+
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/appointments`, {
         method: 'POST',
         headers: {
@@ -339,12 +418,13 @@ const RecepcionDashboard: React.FC = () => {
         },
         body: JSON.stringify(appointmentData)
       });
-      
+
       if (response.ok) {
-        fetchAppointments();
+        await fetchAppointments();
         setShowNewAppointment(false);
         setFoundPatient(null);
         setSearchCedulaCita('');
+        setPatientAppointments([]);
         setNewAppointment({
           pacienteId: '',
           medicoId: '',
@@ -353,12 +433,12 @@ const RecepcionDashboard: React.FC = () => {
           motivo: ''
         });
         setAvailableHours([]);
-        
-        // Mostrar notificación de éxito
+
         setSuccessMessage('¡Cita creada exitosamente!');
         setShowSuccessToast(true);
       } else {
-        setErrorMessage('Error al crear la cita. Intente nuevamente.');
+        const errorData = await response.json();
+        setErrorMessage(errorData.message || 'Error al crear la cita. Intente nuevamente.');
         setShowErrorModal(true);
       }
     } catch (error) {
@@ -419,6 +499,7 @@ const RecepcionDashboard: React.FC = () => {
     setShowNewAppointment(true);
     setFoundPatient(null);
     setSearchCedulaCita('');
+    setPatientAppointments([]);
     setNewAppointment({
       pacienteId: '',
       medicoId: '',
@@ -427,6 +508,38 @@ const RecepcionDashboard: React.FC = () => {
       motivo: ''
     });
     setAvailableHours([]);
+  };
+
+  const getPatientAppointmentSummary = (appointments: Appointment[]) => {
+    const now = new Date();
+    const futureCitas = appointments
+      .filter(a => new Date(`${a.fecha}T${a.hora}`) > now && (a.estado === 'programada' || a.estado === 'confirmada'))
+      .sort((a, b) => new Date(`${a.fecha}T${a.hora}`).getTime() - new Date(`${b.fecha}T${b.hora}`).getTime());
+
+    const pastCitas = appointments
+      .filter(a => new Date(`${a.fecha}T${a.hora}`) <= now)
+      .sort((a, b) => new Date(`${b.fecha}T${b.hora}`).getTime() - new Date(`${a.fecha}T${a.hora}`).getTime());
+
+    return {
+      proximaCita: futureCitas[0],
+      ultimaAsistencia: pastCitas.find(c => c.estado === 'completada'),
+      totalCitas: appointments.length,
+      citasCompletadas: appointments.filter(a => a.estado === 'completada').length,
+      citasCanceladas: appointments.filter(a => a.estado === 'cancelada').length,
+      citasNoAsistio: appointments.filter(a => a.estado === 'no_asistio').length
+    };
+  };
+
+  const formatDateTime = (fecha: string, hora: string) => {
+    const date = new Date(`${fecha}T${hora}`);
+    return date.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   const filteredPatients = patients.filter(patient =>
@@ -865,16 +978,79 @@ const RecepcionDashboard: React.FC = () => {
 
               {/* Información del paciente encontrado */}
               {foundPatient && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                    <span className="text-sm font-medium text-green-800">Paciente encontrado</span>
+                <div className="space-y-3">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <span className="text-sm font-medium text-green-800">Paciente encontrado</span>
+                    </div>
+                    <div className="text-sm text-green-700">
+                      <p className="font-medium">{foundPatient.nombre} {foundPatient.apellido}</p>
+                      <p>C.I: {foundPatient.cedula}</p>
+                      <p>Teléfono: {foundPatient.telefono}</p>
+                    </div>
                   </div>
-                  <div className="text-sm text-green-700">
-                    <p className="font-medium">{foundPatient.nombre} {foundPatient.apellido}</p>
-                    <p>C.I: {foundPatient.cedula}</p>
-                    <p>Teléfono: {foundPatient.telefono}</p>
-                  </div>
+
+                  {/* Historial de citas del paciente */}
+                  {patientAppointments.length > 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-3">
+                        <Calendar className="w-5 h-5 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-800">Historial de Citas</span>
+                      </div>
+
+                      {(() => {
+                        const summary = getPatientAppointmentSummary(patientAppointments);
+                        return (
+                          <div className="space-y-2">
+                            {summary.proximaCita && (
+                              <div className="bg-white rounded p-2 border border-blue-300">
+                                <p className="text-xs font-medium text-blue-800 mb-1">Próxima cita programada</p>
+                                <p className="text-xs text-blue-700">
+                                  {formatDateTime(summary.proximaCita.fecha, summary.proximaCita.hora)}
+                                </p>
+                                <p className="text-xs text-blue-600">Dr. {summary.proximaCita.medicoId.name}</p>
+                                <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs ${getStatusColor(summary.proximaCita.estado)}`}>
+                                  {summary.proximaCita.estado.toUpperCase()}
+                                </span>
+                              </div>
+                            )}
+
+                            {summary.ultimaAsistencia && (
+                              <div className="bg-white rounded p-2 border border-blue-300">
+                                <p className="text-xs font-medium text-blue-800 mb-1">Última asistencia</p>
+                                <p className="text-xs text-blue-700">
+                                  {formatDateTime(summary.ultimaAsistencia.fecha, summary.ultimaAsistencia.hora)}
+                                </p>
+                                <span className="text-xs text-green-600">Completada</span>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                              <div className="bg-white rounded p-2 text-center">
+                                <p className="text-lg font-bold text-green-600">{summary.citasCompletadas}</p>
+                                <p className="text-xs text-gray-600">Completadas</p>
+                              </div>
+                              <div className="bg-white rounded p-2 text-center">
+                                <p className="text-lg font-bold text-orange-600">{summary.citasNoAsistio}</p>
+                                <p className="text-xs text-gray-600">No asistió</p>
+                              </div>
+                            </div>
+
+                            <p className="text-xs text-blue-600 mt-2">
+                              Total de citas: {summary.totalCitas}
+                            </p>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {patientAppointments.length === 0 && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                      <p className="text-xs text-gray-600 text-center">Este paciente no tiene historial de citas</p>
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -901,8 +1077,9 @@ const RecepcionDashboard: React.FC = () => {
                   <input
                     type="date"
                     required
+                    min={new Date().toISOString().split('T')[0]}
                     value={newAppointment.fecha}
-                    onChange={(e) => setNewAppointment({...newAppointment, fecha: e.target.value})}
+                    onChange={(e) => setNewAppointment({...newAppointment, fecha: e.target.value, hora: ''})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
