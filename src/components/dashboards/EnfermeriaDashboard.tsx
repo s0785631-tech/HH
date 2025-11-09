@@ -14,8 +14,14 @@ import {
   Calendar,
   TrendingUp,
   Shield,
-  Search
+  Search,
+  Printer,
+  Download,
+  BarChart3
 } from 'lucide-react';
+import { PDFGenerator } from '../../utils/pdfGenerator';
+import ErrorModal from '../ErrorModal';
+import SuccessToast from '../SuccessToast';
 
 interface Patient {
   _id: string;
@@ -52,6 +58,15 @@ const EnfermeriaDashboard: React.FC = () => {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'triajes' | 'nuevo-triaje' | 'estadisticas'>('triajes');
+
+  // Estados para notificaciones
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // Estados para validación
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
 
   const [nuevoTriaje, setNuevoTriaje] = useState({
     sintomas: '',
@@ -146,15 +161,137 @@ const EnfermeriaDashboard: React.FC = () => {
           setSelectedPatient(data[0]);
           setMostrarFormulario(true);
         } else {
-          alert('Paciente no encontrado');
+          setErrorMessage('Paciente no encontrado');
+          setShowErrorModal(true);
         }
       } else {
-        alert('Error al buscar paciente');
+        setErrorMessage('Error al buscar paciente');
+        setShowErrorModal(true);
       }
     } catch (error) {
       console.error('Error searching patient:', error);
-      alert('Error al buscar paciente');
+      setErrorMessage('Error al buscar paciente');
+      setShowErrorModal(true);
     }
+  };
+
+  // Funciones de validación
+  const validatePresionArterial = (value: string): boolean => {
+    const regex = /^\d{2,3}\/\d{2,3}$/;
+    if (!regex.test(value)) return false;
+    
+    const [sistolica, diastolica] = value.split('/').map(Number);
+    return sistolica >= 70 && sistolica <= 250 && diastolica >= 40 && diastolica <= 150;
+  };
+
+  const validateTemperatura = (value: string): boolean => {
+    const temp = parseFloat(value);
+    return !isNaN(temp) && temp >= 30 && temp <= 45;
+  };
+
+  const validatePulso = (value: string): boolean => {
+    const pulso = parseInt(value);
+    return !isNaN(pulso) && pulso >= 30 && pulso <= 200;
+  };
+
+  const validateSaturacion = (value: string): boolean => {
+    const saturacion = parseInt(value);
+    return !isNaN(saturacion) && saturacion >= 70 && saturacion <= 100;
+  };
+
+  const validateFrecuenciaRespiratoria = (value: string): boolean => {
+    if (!value) return true; // Campo opcional
+    const freq = parseInt(value);
+    return !isNaN(freq) && freq >= 8 && freq <= 40;
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setNuevoTriaje({ ...nuevoTriaje, [field]: value });
+    
+    // Limpiar error de validación cuando el usuario empiece a escribir
+    if (validationErrors[field]) {
+      setValidationErrors({ ...validationErrors, [field]: '' });
+    }
+
+    // Validar en tiempo real
+    let isValid = true;
+    let errorMsg = '';
+
+    switch (field) {
+      case 'presionArterial':
+        if (value && !validatePresionArterial(value)) {
+          isValid = false;
+          errorMsg = 'Formato: 120/80 (70-250/40-150)';
+        }
+        break;
+      case 'temperatura':
+        if (value && !validateTemperatura(value)) {
+          isValid = false;
+          errorMsg = 'Rango válido: 30-45°C';
+        }
+        break;
+      case 'pulso':
+        if (value && !validatePulso(value)) {
+          isValid = false;
+          errorMsg = 'Rango válido: 30-200 bpm';
+        }
+        break;
+      case 'saturacionOxigeno':
+        if (value && !validateSaturacion(value)) {
+          isValid = false;
+          errorMsg = 'Rango válido: 70-100%';
+        }
+        break;
+      case 'frecuenciaRespiratoria':
+        if (value && !validateFrecuenciaRespiratoria(value)) {
+          isValid = false;
+          errorMsg = 'Rango válido: 8-40 rpm';
+        }
+        break;
+    }
+
+    if (!isValid) {
+      setValidationErrors({ ...validationErrors, [field]: errorMsg });
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const errors: {[key: string]: string} = {};
+
+    if (!nuevoTriaje.sintomas.trim()) {
+      errors.sintomas = 'Los síntomas son obligatorios';
+    }
+
+    if (!nuevoTriaje.presionArterial.trim()) {
+      errors.presionArterial = 'La presión arterial es obligatoria';
+    } else if (!validatePresionArterial(nuevoTriaje.presionArterial)) {
+      errors.presionArterial = 'Formato: 120/80 (70-250/40-150)';
+    }
+
+    if (!nuevoTriaje.temperatura.trim()) {
+      errors.temperatura = 'La temperatura es obligatoria';
+    } else if (!validateTemperatura(nuevoTriaje.temperatura)) {
+      errors.temperatura = 'Rango válido: 30-45°C';
+    }
+
+    if (!nuevoTriaje.pulso.trim()) {
+      errors.pulso = 'El pulso es obligatorio';
+    } else if (!validatePulso(nuevoTriaje.pulso)) {
+      errors.pulso = 'Rango válido: 30-200 bpm';
+    }
+
+    if (!nuevoTriaje.saturacionOxigeno.trim()) {
+      errors.saturacionOxigeno = 'La saturación es obligatoria';
+    } else if (!validateSaturacion(nuevoTriaje.saturacionOxigeno)) {
+      errors.saturacionOxigeno = 'Rango válido: 70-100%';
+    }
+
+    if (nuevoTriaje.frecuenciaRespiratoria && !validateFrecuenciaRespiratoria(nuevoTriaje.frecuenciaRespiratoria)) {
+      errors.frecuenciaRespiratoria = 'Rango válido: 8-40 rpm';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const getPrioridadColor = (prioridad: string) => {
@@ -189,6 +326,12 @@ const EnfermeriaDashboard: React.FC = () => {
     e.preventDefault();
     
     if (!selectedPatient) return;
+
+    if (!validateForm()) {
+      setErrorMessage('Por favor corrija los errores en el formulario');
+      setShowErrorModal(true);
+      return;
+    }
 
     const triageData = {
       pacienteId: selectedPatient._id,
@@ -229,12 +372,20 @@ const EnfermeriaDashboard: React.FC = () => {
           frecuenciaRespiratoria: '',
           observaciones: ''
         });
+        setValidationErrors({});
+        
+        setSuccessMessage('¡Triaje guardado exitosamente!');
+        setShowSuccessToast(true);
+        setActiveTab('triajes');
       } else {
-        alert('Error al crear triaje');
+        const errorData = await response.json();
+        setErrorMessage(errorData.message || 'Error al crear triaje');
+        setShowErrorModal(true);
       }
     } catch (error) {
       console.error('Error creating triage:', error);
-      alert('Error al crear triaje');
+      setErrorMessage('Error de conexión. Verifique su conexión a internet.');
+      setShowErrorModal(true);
     }
   };
 
@@ -252,9 +403,13 @@ const EnfermeriaDashboard: React.FC = () => {
       
       if (response.ok) {
         fetchTriajes();
+        setSuccessMessage('Estado actualizado correctamente');
+        setShowSuccessToast(true);
       }
     } catch (error) {
       console.error('Error updating triage status:', error);
+      setErrorMessage('Error al actualizar el estado');
+      setShowErrorModal(true);
     }
   };
 
@@ -267,6 +422,77 @@ const EnfermeriaDashboard: React.FC = () => {
       age--;
     }
     return age;
+  };
+
+  // Funciones de impresión
+  const generateTriagesPDF = async () => {
+    try {
+      setSuccessMessage('Generando reporte de triajes...');
+      setShowSuccessToast(true);
+      
+      const blob = await PDFGenerator.generateTriagesReportPDF(triajes);
+      const filename = `triajes_${new Date().toISOString().split('T')[0]}.pdf`;
+      PDFGenerator.downloadPDF(blob, filename);
+      
+      setTimeout(() => {
+        setSuccessMessage('¡Reporte de triajes generado exitosamente!');
+        setShowSuccessToast(true);
+      }, 1000);
+    } catch (error) {
+      console.error('Error generating triages report:', error);
+      setErrorMessage('Error al generar el reporte de triajes');
+      setShowErrorModal(true);
+    }
+  };
+
+  const generateStatisticsPDF = async () => {
+    try {
+      setSuccessMessage('Generando reporte de estadísticas...');
+      setShowSuccessToast(true);
+      
+      const estadisticas = {
+        total: triajes.length,
+        pendientes: triajes.filter(t => t.estado === 'pendiente').length,
+        enProceso: triajes.filter(t => t.estado === 'en_proceso').length,
+        completados: triajes.filter(t => t.estado === 'completado').length,
+        prioridadAlta: triajes.filter(t => t.prioridad === 'alta').length,
+        prioridadMedia: triajes.filter(t => t.prioridad === 'media').length,
+        prioridadBaja: triajes.filter(t => t.prioridad === 'baja').length
+      };
+      
+      const blob = await PDFGenerator.generateTriageStatisticsPDF(estadisticas, triajes);
+      const filename = `estadisticas_triaje_${new Date().toISOString().split('T')[0]}.pdf`;
+      PDFGenerator.downloadPDF(blob, filename);
+      
+      setTimeout(() => {
+        setSuccessMessage('¡Reporte de estadísticas generado exitosamente!');
+        setShowSuccessToast(true);
+      }, 1000);
+    } catch (error) {
+      console.error('Error generating statistics report:', error);
+      setErrorMessage('Error al generar el reporte de estadísticas');
+      setShowErrorModal(true);
+    }
+  };
+
+  const generatePatientTriagePDF = async (triaje: TriajeData) => {
+    try {
+      setSuccessMessage('Generando triaje del paciente...');
+      setShowSuccessToast(true);
+      
+      const blob = await PDFGenerator.generateSingleTriagePDF(triaje);
+      const filename = `triaje_${triaje.pacienteId.nombre}_${triaje.pacienteId.apellido}_${new Date().toISOString().split('T')[0]}.pdf`;
+      PDFGenerator.downloadPDF(blob, filename);
+      
+      setTimeout(() => {
+        setSuccessMessage('¡Triaje del paciente generado exitosamente!');
+        setShowSuccessToast(true);
+      }, 1000);
+    } catch (error) {
+      console.error('Error generating patient triage:', error);
+      setErrorMessage('Error al generar el triaje del paciente');
+      setShowErrorModal(true);
+    }
   };
 
   const estadisticas = {
@@ -287,27 +513,6 @@ const EnfermeriaDashboard: React.FC = () => {
               <h1 className="text-xl font-bold text-red-900">Enfermería - Triaje</h1>
               <p className="text-red-700">Evaluación y clasificación de pacientes</p>
             </div>
-            
-            {/* Search Patient */}
-            {/* <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  placeholder="Buscar por cédula..."
-                  value={searchCedula}
-                  onChange={(e) => setSearchCedula(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  onKeyPress={(e) => e.key === 'Enter' && searchPatientByCedula()}
-                />
-                <button
-                  onClick={searchPatientByCedula}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-                >
-                  <Search className="w-4 h-4" />
-                  <span>Buscar</span>
-                </button>
-              </div>
-            </div> */}
           </div>
         </div>
       </div>
@@ -407,7 +612,16 @@ const EnfermeriaDashboard: React.FC = () => {
         {activeTab === 'triajes' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Triajes del Día</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">Triajes del Día</h2>
+                <button
+                  onClick={generateTriagesPDF}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Imprimir Triajes</span>
+                </button>
+              </div>
             </div>
             
             <div className="divide-y divide-gray-200">
@@ -457,6 +671,13 @@ const EnfermeriaDashboard: React.FC = () => {
                         {new Date(triaje.fechaHora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                       <div className="flex space-x-2">
+                        <button
+                          onClick={() => generatePatientTriagePDF(triaje)}
+                          className="px-3 py-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm flex items-center space-x-1"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>PDF</span>
+                        </button>
                         {triaje.estado === 'pendiente' && (
                           <button
                             onClick={() => actualizarEstado(triaje._id!, 'en_proceso')}
@@ -547,10 +768,15 @@ const EnfermeriaDashboard: React.FC = () => {
                         required
                         rows={3}
                         value={nuevoTriaje.sintomas}
-                        onChange={(e) => setNuevoTriaje({...nuevoTriaje, sintomas: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                        onChange={(e) => handleInputChange('sintomas', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                          validationErrors.sintomas ? 'border-red-300' : 'border-gray-300'
+                        }`}
                         placeholder="Describa los síntomas principales del paciente"
                       />
+                      {validationErrors.sintomas && (
+                        <p className="text-red-600 text-sm mt-1">{validationErrors.sintomas}</p>
+                      )}
                     </div>
                     
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -563,9 +789,14 @@ const EnfermeriaDashboard: React.FC = () => {
                           required
                           placeholder="120/80"
                           value={nuevoTriaje.presionArterial}
-                          onChange={(e) => setNuevoTriaje({...nuevoTriaje, presionArterial: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          onChange={(e) => handleInputChange('presionArterial', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                            validationErrors.presionArterial ? 'border-red-300' : 'border-gray-300'
+                          }`}
                         />
+                        {validationErrors.presionArterial && (
+                          <p className="text-red-600 text-sm mt-1">{validationErrors.presionArterial}</p>
+                        )}
                       </div>
                       
                       <div>
@@ -578,9 +809,14 @@ const EnfermeriaDashboard: React.FC = () => {
                           required
                           placeholder="36.5"
                           value={nuevoTriaje.temperatura}
-                          onChange={(e) => setNuevoTriaje({...nuevoTriaje, temperatura: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          onChange={(e) => handleInputChange('temperatura', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                            validationErrors.temperatura ? 'border-red-300' : 'border-gray-300'
+                          }`}
                         />
+                        {validationErrors.temperatura && (
+                          <p className="text-red-600 text-sm mt-1">{validationErrors.temperatura}</p>
+                        )}
                       </div>
                       
                       <div>
@@ -592,9 +828,14 @@ const EnfermeriaDashboard: React.FC = () => {
                           required
                           placeholder="70"
                           value={nuevoTriaje.pulso}
-                          onChange={(e) => setNuevoTriaje({...nuevoTriaje, pulso: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          onChange={(e) => handleInputChange('pulso', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                            validationErrors.pulso ? 'border-red-300' : 'border-gray-300'
+                          }`}
                         />
+                        {validationErrors.pulso && (
+                          <p className="text-red-600 text-sm mt-1">{validationErrors.pulso}</p>
+                        )}
                       </div>
                       
                       <div>
@@ -606,9 +847,14 @@ const EnfermeriaDashboard: React.FC = () => {
                           required
                           placeholder="98"
                           value={nuevoTriaje.saturacionOxigeno}
-                          onChange={(e) => setNuevoTriaje({...nuevoTriaje, saturacionOxigeno: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          onChange={(e) => handleInputChange('saturacionOxigeno', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                            validationErrors.saturacionOxigeno ? 'border-red-300' : 'border-gray-300'
+                          }`}
                         />
+                        {validationErrors.saturacionOxigeno && (
+                          <p className="text-red-600 text-sm mt-1">{validationErrors.saturacionOxigeno}</p>
+                        )}
                       </div>
                       
                       <div>
@@ -619,9 +865,14 @@ const EnfermeriaDashboard: React.FC = () => {
                           type="number"
                           placeholder="16"
                           value={nuevoTriaje.frecuenciaRespiratoria}
-                          onChange={(e) => setNuevoTriaje({...nuevoTriaje, frecuenciaRespiratoria: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          onChange={(e) => handleInputChange('frecuenciaRespiratoria', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                            validationErrors.frecuenciaRespiratoria ? 'border-red-300' : 'border-gray-300'
+                          }`}
                         />
+                        {validationErrors.frecuenciaRespiratoria && (
+                          <p className="text-red-600 text-sm mt-1">{validationErrors.frecuenciaRespiratoria}</p>
+                        )}
                       </div>
                     </div>
                     
@@ -632,7 +883,7 @@ const EnfermeriaDashboard: React.FC = () => {
                       <textarea
                         rows={3}
                         value={nuevoTriaje.observaciones}
-                        onChange={(e) => setNuevoTriaje({...nuevoTriaje, observaciones: e.target.value})}
+                        onChange={(e) => handleInputChange('observaciones', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                         placeholder="Observaciones adicionales sobre el estado del paciente"
                       />
@@ -653,6 +904,7 @@ const EnfermeriaDashboard: React.FC = () => {
                             frecuenciaRespiratoria: '',
                             observaciones: ''
                           });
+                          setValidationErrors({});
                         }}
                         className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                       >
@@ -683,7 +935,16 @@ const EnfermeriaDashboard: React.FC = () => {
         {activeTab === 'estadisticas' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Estadísticas de Triaje</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">Estadísticas de Triaje</h2>
+                <button
+                  onClick={generateStatisticsPDF}
+                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  <span>Imprimir Estadísticas</span>
+                </button>
+              </div>
             </div>
             
             <div className="p-6">
@@ -699,7 +960,7 @@ const EnfermeriaDashboard: React.FC = () => {
                       </div>
                       <div className="flex items-center space-x-3">
                         <div className="w-32 bg-gray-200 rounded-full h-2">
-                          <div className="bg-red-500 h-2 rounded-full" style={{ width: `${(estadisticas.prioridadAlta / estadisticas.total) * 100}%` }}></div>
+                          <div className="bg-red-500 h-2 rounded-full" style={{ width: `${estadisticas.total > 0 ? (estadisticas.prioridadAlta / estadisticas.total) * 100 : 0}%` }}></div>
                         </div>
                         <span className="text-sm font-medium text-gray-900">{estadisticas.prioridadAlta}</span>
                       </div>
@@ -712,7 +973,7 @@ const EnfermeriaDashboard: React.FC = () => {
                       </div>
                       <div className="flex items-center space-x-3">
                         <div className="w-32 bg-gray-200 rounded-full h-2">
-                          <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '45%' }}></div>
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${estadisticas.total > 0 ? (triajes.filter(t => t.prioridad === 'media').length / estadisticas.total) * 100 : 0}%` }}></div>
                         </div>
                         <span className="text-sm font-medium text-gray-900">
                           {triajes.filter(t => t.prioridad === 'media').length}
@@ -727,7 +988,7 @@ const EnfermeriaDashboard: React.FC = () => {
                       </div>
                       <div className="flex items-center space-x-3">
                         <div className="w-32 bg-gray-200 rounded-full h-2">
-                          <div className="bg-green-500 h-2 rounded-full" style={{ width: '30%' }}></div>
+                          <div className="bg-green-500 h-2 rounded-full" style={{ width: `${estadisticas.total > 0 ? (triajes.filter(t => t.prioridad === 'baja').length / estadisticas.total) * 100 : 0}%` }}></div>
                         </div>
                         <span className="text-sm font-medium text-gray-900">
                           {triajes.filter(t => t.prioridad === 'baja').length}
@@ -831,7 +1092,7 @@ const EnfermeriaDashboard: React.FC = () => {
                   required
                   rows={3}
                   value={nuevoTriaje.sintomas}
-                  onChange={(e) => setNuevoTriaje({...nuevoTriaje, sintomas: e.target.value})}
+                  onChange={(e) => handleInputChange('sintomas', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -846,7 +1107,7 @@ const EnfermeriaDashboard: React.FC = () => {
                     required
                     placeholder="120/80"
                     value={nuevoTriaje.presionArterial}
-                    onChange={(e) => setNuevoTriaje({...nuevoTriaje, presionArterial: e.target.value})}
+                    onChange={(e) => handleInputChange('presionArterial', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -860,7 +1121,7 @@ const EnfermeriaDashboard: React.FC = () => {
                     step="0.1"
                     required
                     value={nuevoTriaje.temperatura}
-                    onChange={(e) => setNuevoTriaje({...nuevoTriaje, temperatura: e.target.value})}
+                    onChange={(e) => handleInputChange('temperatura', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -873,7 +1134,7 @@ const EnfermeriaDashboard: React.FC = () => {
                     type="number"
                     required
                     value={nuevoTriaje.pulso}
-                    onChange={(e) => setNuevoTriaje({...nuevoTriaje, pulso: e.target.value})}
+                    onChange={(e) => handleInputChange('pulso', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -886,7 +1147,7 @@ const EnfermeriaDashboard: React.FC = () => {
                     type="number"
                     required
                     value={nuevoTriaje.saturacionOxigeno}
-                    onChange={(e) => setNuevoTriaje({...nuevoTriaje, saturacionOxigeno: e.target.value})}
+                    onChange={(e) => handleInputChange('saturacionOxigeno', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -898,7 +1159,7 @@ const EnfermeriaDashboard: React.FC = () => {
                   <input
                     type="number"
                     value={nuevoTriaje.frecuenciaRespiratoria}
-                    onChange={(e) => setNuevoTriaje({...nuevoTriaje, frecuenciaRespiratoria: e.target.value})}
+                    onChange={(e) => handleInputChange('frecuenciaRespiratoria', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -911,7 +1172,7 @@ const EnfermeriaDashboard: React.FC = () => {
                 <textarea
                   rows={3}
                   value={nuevoTriaje.observaciones}
-                  onChange={(e) => setNuevoTriaje({...nuevoTriaje, observaciones: e.target.value})}
+                  onChange={(e) => handleInputChange('observaciones', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -939,6 +1200,22 @@ const EnfermeriaDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="¡Ups, algo salió mal!"
+        message={errorMessage}
+        buttonText="Aceptar"
+      />
+
+      {/* Success Toast */}
+      <SuccessToast
+        isOpen={showSuccessToast}
+        onClose={() => setShowSuccessToast(false)}
+        message={successMessage}
+      />
     </div>
   );
 };

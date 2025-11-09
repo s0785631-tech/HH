@@ -580,4 +580,423 @@ export class PDFGenerator {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   }
+
+  // Nuevas funciones para reportes de triaje
+  static async generateTriagesReportPDF(triajes: any[]): Promise<Blob> {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    let yPosition = 20;
+
+    // Header
+    pdf.setFontSize(20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 102, 153);
+    pdf.text('SAVISER', pageWidth / 2, yPosition, { align: 'center' });
+    
+    yPosition += 8;
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text('Servicio de Apoyo a la Vida del Ser Humano', pageWidth / 2, yPosition, { align: 'center' });
+    
+    yPosition += 15;
+    pdf.setDrawColor(0, 102, 153);
+    pdf.line(20, yPosition, pageWidth - 20, yPosition);
+    yPosition += 15;
+
+    // Título
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 0, 0);
+    pdf.text('REPORTE DE TRIAJES', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 10;
+    
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Fecha: ${this.formatDate(new Date().toISOString())}`, pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 20;
+
+    // Resumen
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('RESUMEN DEL DÍA', 20, yPosition);
+    yPosition += 15;
+
+    const stats = {
+      total: triajes.length,
+      pendientes: triajes.filter(t => t.estado === 'pendiente').length,
+      enProceso: triajes.filter(t => t.estado === 'en_proceso').length,
+      completados: triajes.filter(t => t.estado === 'completado').length,
+      prioridadAlta: triajes.filter(t => t.prioridad === 'alta').length,
+      prioridadMedia: triajes.filter(t => t.prioridad === 'media').length,
+      prioridadBaja: triajes.filter(t => t.prioridad === 'baja').length
+    };
+
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'normal');
+    
+    const summaryData = [
+      ['Total de Triajes:', stats.total.toString()],
+      ['Pendientes:', stats.pendientes.toString()],
+      ['En Proceso:', stats.enProceso.toString()],
+      ['Completados:', stats.completados.toString()],
+      ['Prioridad Alta:', stats.prioridadAlta.toString()],
+      ['Prioridad Media:', stats.prioridadMedia.toString()],
+      ['Prioridad Baja:', stats.prioridadBaja.toString()]
+    ];
+
+    summaryData.forEach(([label, value]) => {
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(label, 25, yPosition);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(value, 120, yPosition);
+      yPosition += 8;
+    });
+
+    yPosition += 15;
+
+    // Lista de triajes
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('DETALLE DE TRIAJES', 20, yPosition);
+    yPosition += 15;
+
+    triajes.forEach((triaje, index) => {
+      if (yPosition > pageHeight - 60) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`${index + 1}. ${triaje.pacienteId.nombre} ${triaje.pacienteId.apellido}`, 25, yPosition);
+      yPosition += 6;
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`C.I: ${triaje.pacienteId.cedula}`, 30, yPosition);
+      yPosition += 5;
+      pdf.text(`Edad: ${this.calculateAge(triaje.pacienteId.fechaNacimiento)} años`, 30, yPosition);
+      yPosition += 5;
+      
+      // Prioridad con color
+      pdf.setFont('helvetica', 'bold');
+      const prioridadColor = triaje.prioridad === 'alta' ? [255, 0, 0] : 
+                            triaje.prioridad === 'media' ? [255, 165, 0] : [0, 128, 0];
+      pdf.setTextColor(prioridadColor[0], prioridadColor[1], prioridadColor[2]);
+      pdf.text(`Prioridad: ${triaje.prioridad.toUpperCase()}`, 30, yPosition);
+      pdf.setTextColor(0, 0, 0);
+      yPosition += 5;
+      
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Estado: ${triaje.estado.replace('_', ' ').toUpperCase()}`, 30, yPosition);
+      yPosition += 5;
+      pdf.text(`Síntomas: ${triaje.sintomas}`, 30, yPosition);
+      yPosition += 5;
+      
+      // Signos vitales
+      pdf.text(`Signos Vitales:`, 30, yPosition);
+      yPosition += 5;
+      pdf.text(`  • PA: ${triaje.signosVitales.presionArterial}`, 35, yPosition);
+      yPosition += 4;
+      pdf.text(`  • Temp: ${triaje.signosVitales.temperatura}°C`, 35, yPosition);
+      yPosition += 4;
+      pdf.text(`  • FC: ${triaje.signosVitales.pulso} bpm`, 35, yPosition);
+      yPosition += 4;
+      pdf.text(`  • SpO2: ${triaje.signosVitales.saturacionOxigeno}%`, 35, yPosition);
+      if (triaje.signosVitales.frecuenciaRespiratoria) {
+        yPosition += 4;
+        pdf.text(`  • FR: ${triaje.signosVitales.frecuenciaRespiratoria} rpm`, 35, yPosition);
+      }
+      yPosition += 5;
+      
+      pdf.text(`Hora: ${new Date(triaje.fechaHora).toLocaleTimeString('es-ES')}`, 30, yPosition);
+      yPosition += 15;
+    });
+
+    // Pie de página
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Generado el ${new Date().toLocaleString('es-ES')}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+    return pdf.output('blob');
+  }
+
+  static async generateTriageStatisticsPDF(stats: any, triajes: any[]): Promise<Blob> {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    let yPosition = 20;
+
+    // Header
+    pdf.setFontSize(20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 102, 153);
+    pdf.text('SAVISER', pageWidth / 2, yPosition, { align: 'center' });
+    
+    yPosition += 8;
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text('Servicio de Apoyo a la Vida del Ser Humano', pageWidth / 2, yPosition, { align: 'center' });
+    
+    yPosition += 15;
+    pdf.setDrawColor(0, 102, 153);
+    pdf.line(20, yPosition, pageWidth - 20, yPosition);
+    yPosition += 15;
+
+    // Título
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 0, 0);
+    pdf.text('ESTADÍSTICAS DE TRIAJE', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 10;
+    
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Fecha: ${this.formatDate(new Date().toISOString())}`, pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 20;
+
+    // Estadísticas generales
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('ESTADÍSTICAS GENERALES', 20, yPosition);
+    yPosition += 15;
+
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'normal');
+    
+    const generalStats = [
+      ['Total de Triajes:', stats.total?.toString() || '0'],
+      ['Triajes Pendientes:', stats.pendientes?.toString() || '0'],
+      ['Triajes en Proceso:', stats.enProceso?.toString() || '0'],
+      ['Triajes Completados:', stats.completados?.toString() || '0']
+    ];
+
+    generalStats.forEach(([label, value]) => {
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(label, 25, yPosition);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(value, 120, yPosition);
+      yPosition += 8;
+    });
+
+    yPosition += 15;
+
+    // Distribución por prioridad
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('DISTRIBUCIÓN POR PRIORIDAD', 20, yPosition);
+    yPosition += 15;
+
+    const priorityStats = [
+      ['Prioridad Alta:', stats.prioridadAlta?.toString() || '0', [255, 0, 0]],
+      ['Prioridad Media:', stats.prioridadMedia?.toString() || '0', [255, 165, 0]],
+      ['Prioridad Baja:', stats.prioridadBaja?.toString() || '0', [0, 128, 0]]
+    ];
+
+    priorityStats.forEach(([label, value, color]) => {
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(color[0], color[1], color[2]);
+      pdf.text(label, 25, yPosition);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(value, 120, yPosition);
+      
+      // Barra de progreso
+      const percentage = stats.total > 0 ? (parseInt(value) / stats.total) * 100 : 0;
+      const barWidth = 60;
+      const barHeight = 4;
+      
+      // Fondo de la barra
+      pdf.setFillColor(220, 220, 220);
+      pdf.rect(140, yPosition - 3, barWidth, barHeight, 'F');
+      
+      // Barra de progreso
+      pdf.setFillColor(color[0], color[1], color[2]);
+      pdf.rect(140, yPosition - 3, (barWidth * percentage) / 100, barHeight, 'F');
+      
+      // Porcentaje
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(`${percentage.toFixed(1)}%`, 205, yPosition);
+      
+      yPosition += 12;
+    });
+
+    yPosition += 15;
+
+    // Signos vitales promedio
+    if (triajes.length > 0) {
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('SIGNOS VITALES PROMEDIO', 20, yPosition);
+      yPosition += 15;
+
+      const avgTemp = triajes.reduce((sum, t) => sum + t.signosVitales.temperatura, 0) / triajes.length;
+      const avgPulse = triajes.reduce((sum, t) => sum + t.signosVitales.pulso, 0) / triajes.length;
+      const avgSat = triajes.reduce((sum, t) => sum + t.signosVitales.saturacionOxigeno, 0) / triajes.length;
+
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      
+      const vitalStats = [
+        ['Temperatura Promedio:', `${avgTemp.toFixed(1)}°C`],
+        ['Pulso Promedio:', `${avgPulse.toFixed(0)} bpm`],
+        ['Saturación Promedio:', `${avgSat.toFixed(1)}%`]
+      ];
+
+      vitalStats.forEach(([label, value]) => {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(label, 25, yPosition);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(value, 120, yPosition);
+        yPosition += 8;
+      });
+    }
+
+    // Pie de página
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Generado el ${new Date().toLocaleString('es-ES')}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+    return pdf.output('blob');
+  }
+
+  static async generateSingleTriagePDF(triaje: any): Promise<Blob> {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    let yPosition = 20;
+
+    // Header
+    pdf.setFontSize(20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 102, 153);
+    pdf.text('SAVISER', pageWidth / 2, yPosition, { align: 'center' });
+    
+    yPosition += 8;
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text('Servicio de Apoyo a la Vida del Ser Humano', pageWidth / 2, yPosition, { align: 'center' });
+    
+    yPosition += 15;
+    pdf.setDrawColor(0, 102, 153);
+    pdf.line(20, yPosition, pageWidth - 20, yPosition);
+    yPosition += 15;
+
+    // Título
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 0, 0);
+    pdf.text('TRIAJE MÉDICO', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 20;
+
+    // Información del paciente
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('DATOS DEL PACIENTE', 20, yPosition);
+    yPosition += 10;
+
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('NOMBRE:', 20, yPosition);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`${triaje.pacienteId.nombre} ${triaje.pacienteId.apellido}`, 55, yPosition);
+    yPosition += 6;
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('CÉDULA:', 20, yPosition);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(triaje.pacienteId.cedula, 45, yPosition);
+    yPosition += 6;
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('EDAD:', 20, yPosition);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`${this.calculateAge(triaje.pacienteId.fechaNacimiento)} años`, 35, yPosition);
+    yPosition += 6;
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('GÉNERO:', 20, yPosition);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(triaje.pacienteId.genero === 'M' ? 'Masculino' : 'Femenino', 45, yPosition);
+    yPosition += 6;
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('FECHA/HORA:', 20, yPosition);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`${this.formatDate(triaje.fechaHora)} - ${this.formatTime(triaje.fechaHora)}`, 60, yPosition);
+    yPosition += 15;
+
+    // Información del triaje
+    pdf.line(20, yPosition, pageWidth - 20, yPosition);
+    yPosition += 10;
+
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('EVALUACIÓN DE TRIAJE', 20, yPosition);
+    yPosition += 10;
+
+    // Prioridad
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('PRIORIDAD:', 20, yPosition);
+    const prioridadColor = triaje.prioridad === 'alta' ? [255, 0, 0] : 
+                          triaje.prioridad === 'media' ? [255, 165, 0] : [0, 128, 0];
+    pdf.setTextColor(prioridadColor[0], prioridadColor[1], prioridadColor[2]);
+    pdf.text(triaje.prioridad.toUpperCase(), 55, yPosition);
+    pdf.setTextColor(0, 0, 0);
+    yPosition += 10;
+
+    // Síntomas
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('SÍNTOMAS:', 20, yPosition);
+    yPosition += 6;
+    pdf.setFont('helvetica', 'normal');
+    const sintomasLines = pdf.splitTextToSize(triaje.sintomas, pageWidth - 40);
+    pdf.text(sintomasLines, 20, yPosition);
+    yPosition += sintomasLines.length * 5 + 10;
+
+    // Signos vitales
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('SIGNOS VITALES:', 20, yPosition);
+    yPosition += 8;
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`• Presión Arterial: ${triaje.signosVitales.presionArterial}`, 25, yPosition);
+    yPosition += 6;
+    pdf.text(`• Temperatura: ${triaje.signosVitales.temperatura}°C`, 25, yPosition);
+    yPosition += 6;
+    pdf.text(`• Pulso: ${triaje.signosVitales.pulso} bpm`, 25, yPosition);
+    yPosition += 6;
+    pdf.text(`• Saturación O2: ${triaje.signosVitales.saturacionOxigeno}%`, 25, yPosition);
+    if (triaje.signosVitales.frecuenciaRespiratoria) {
+      yPosition += 6;
+      pdf.text(`• Frecuencia Respiratoria: ${triaje.signosVitales.frecuenciaRespiratoria} rpm`, 25, yPosition);
+    }
+    yPosition += 15;
+
+    // Observaciones
+    if (triaje.observaciones) {
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('OBSERVACIONES:', 20, yPosition);
+      yPosition += 6;
+      pdf.setFont('helvetica', 'normal');
+      const observacionesLines = pdf.splitTextToSize(triaje.observaciones, pageWidth - 40);
+      pdf.text(observacionesLines, 20, yPosition);
+      yPosition += observacionesLines.length * 5 + 10;
+    }
+
+    // Estado
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('ESTADO:', 20, yPosition);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(triaje.estado.replace('_', ' ').toUpperCase(), 50, yPosition);
+
+    // Pie de página
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Generado el ${new Date().toLocaleString('es-ES')}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+    return pdf.output('blob');
+  }
 }
