@@ -50,10 +50,13 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         sessionStorage.setItem('hasShownWelcome', 'true');
         setTimeout(() => {
           setShowSuccessToast(false);
-          onLogin(data.user.role);
+          // Determinar el rol correcto para el dashboard
+          const dashboardRole = data.user.role === 'doctor' ? 'doctor' : data.user.role;
+          onLogin(dashboardRole);
         }, 70000);
       } else {
-        onLogin(data.user.role);
+        const dashboardRole = data.user.role === 'doctor' ? 'doctor' : data.user.role;
+        onLogin(dashboardRole);
       }
     } catch (error: any) {
       console.error('Error en autenticación:', error);

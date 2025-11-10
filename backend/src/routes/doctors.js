@@ -113,7 +113,7 @@ router.post('/', authMiddleware, async (req, res) => {
       email,
       cedula,
       password: hashedPassword,
-      role: 'consultorio',
+      role: 'doctor',
       name: `Dr. ${nombre} ${apellido}`
     });
     

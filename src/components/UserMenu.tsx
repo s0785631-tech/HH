@@ -181,7 +181,12 @@ const UserMenu: React.FC<UserMenuProps> = ({ userRole, onLogout, onMenuAction })
               <div>
                 <h3 className="font-semibold">{user.name || 'Usuario'}</h3>
                 <p className="text-sm opacity-75">{getRoleDisplayName(userRole)}</p>
-                <p className="text-xs opacity-60">{user.id || user.documentNumber}</p>
+                <p className="text-xs opacity-60">
+                  {user.doctorInfo?.cedula || user.id || user.documentNumber}
+                </p>
+                {user.doctorInfo?.especialidad && (
+                  <p className="text-xs opacity-60">{user.doctorInfo.especialidad}</p>
+                )}
               </div>
             </div>
           </div>
