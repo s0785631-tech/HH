@@ -53,7 +53,7 @@ router.post('/login', async (req, res) => {
       
       if (isValidPassword) {
         const token = jwt.sign(
-          { userId: doctor.userId._id, role: 'doctor' },
+          { userId: doctor.userId._id, role: 'doctor', doctorId: doctor._id },
           process.env.JWT_SECRET || 'secret',
           { expiresIn: '8h' }
         );
@@ -63,12 +63,18 @@ router.post('/login', async (req, res) => {
           token,
           user: {
             id: doctor.userId._id,
-            name: doctor.userId.name,
+            name: `Dr. ${doctor.nombre} ${doctor.apellido}`,
             role: 'doctor',
             doctorInfo: {
+              doctorId: doctor._id,
+              cedula: doctor.cedula,
+              nombre: doctor.nombre,
+              apellido: doctor.apellido,
               especialidad: doctor.especialidad,
               numeroLicencia: doctor.numeroLicencia,
-              consultorio: doctor.consultorio
+              consultorio: doctor.consultorio,
+              telefono: doctor.telefono,
+              email: doctor.email
             }
           }
         });

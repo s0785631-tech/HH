@@ -112,15 +112,32 @@ const DoctorDashboard: React.FC = () => {
 
   // Información del doctor logueado
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const doctorInfo = {
+  
+  // Obtener información del doctor desde el token o usar datos por defecto
+  const doctorInfo = user.doctorInfo ? {
+    nombre: user.doctorInfo.nombre,
+    apellido: user.doctorInfo.apellido,
+    especialidad: user.doctorInfo.especialidad,
+    numeroLicencia: user.doctorInfo.numeroLicencia,
+    consultorio: user.doctorInfo.consultorio || {
+      numero: '101',
+      nombre: 'Consultorio Principal'
+    },
+    cedula: user.doctorInfo.cedula,
+    telefono: user.doctorInfo.telefono,
+    email: user.doctorInfo.email
+  } : {
     nombre: user.name?.split(' ')[1] || 'Doctor',
     apellido: user.name?.split(' ')[2] || '',
-    especialidad: 'Medicina General', // Esto debería venir de la base de datos
-    numeroLicencia: 'MED-12345', // Esto debería venir de la base de datos
+    especialidad: 'Medicina General',
+    numeroLicencia: 'MED-12345',
     consultorio: {
       numero: '101',
       nombre: 'Consultorio Principal'
-    }
+    },
+    cedula: 'N/A',
+    telefono: 'N/A',
+    email: 'N/A'
   };
 
   useEffect(() => {

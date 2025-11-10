@@ -50,7 +50,17 @@ function App() {
 
   const handleLogin = (role) => {
     console.log('Login successful, setting role:', role);
-    setUserRole(role);
+    
+    // Verificar si es un doctor y redirigir al dashboard correcto
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user.role === 'doctor') {
+      setUserRole('doctor');
+    } else if (user.role === 'consultorio') {
+      // Mantener compatibilidad con el rol consultorio existente
+      setUserRole('consultorio');
+    } else {
+      setUserRole(role);
+    }
   };
 
   const handleLogout = () => {
