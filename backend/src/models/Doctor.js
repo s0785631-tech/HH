@@ -17,7 +17,8 @@ const DoctorSchema = new mongoose.Schema({
   cedula: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    index: true
   },
   especialidad: {
     type: String,
@@ -26,7 +27,8 @@ const DoctorSchema = new mongoose.Schema({
   numeroLicencia: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    index: true
   },
   telefono: {
     type: String,
@@ -36,7 +38,8 @@ const DoctorSchema = new mongoose.Schema({
     type: String,
     required: true,
     lowercase: true,
-    unique: true
+    unique: true,
+    index: true
   },
   consultorio: {
     numero: {
@@ -77,10 +80,7 @@ const DoctorSchema = new mongoose.Schema({
   }
 });
 
-// Índices para mejorar las consultas
-DoctorSchema.index({ cedula: 1 });
-DoctorSchema.index({ numeroLicencia: 1 });
-DoctorSchema.index({ email: 1 });
+// Índice adicional para userId (no duplicado)
 DoctorSchema.index({ userId: 1 });
 
 module.exports = mongoose.model('Doctor', DoctorSchema);

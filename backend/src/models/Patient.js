@@ -4,7 +4,8 @@ const PatientSchema = new mongoose.Schema({
   cedula: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    index: true
   },
   nombre: {
     type: String,
