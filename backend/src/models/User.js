@@ -21,7 +21,7 @@ const UserSchema = new mongoose.Schema({
   role: {
     type: String,
     required: true,
-    enum: ['empresa', 'recepcion', 'consultorio', 'enfermeria']
+    enum: ['empresa', 'recepcion', 'consultorio', 'enfermeria', 'doctor']
   },
   name: {
     type: String,

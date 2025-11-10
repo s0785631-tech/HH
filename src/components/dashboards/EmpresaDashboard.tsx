@@ -111,6 +111,7 @@ const EmpresaDashboard: React.FC = () => {
     telefono: '',
     email: '',
     password: '',
+    confirmPassword: '',
     consultorio: {
       numero: '',
       nombre: ''
@@ -270,20 +271,53 @@ const EmpresaDashboard: React.FC = () => {
     }
   };
 
+  const validatePassword = (password: string): { valid: boolean; message: string } => {
+    if (password.length < 8) {
+      return { valid: false, message: 'La contraseña debe tener al menos 8 caracteres' };
+    }
+    if (!/[A-Z]/.test(password)) {
+      return { valid: false, message: 'La contraseña debe contener al menos una letra mayúscula' };
+    }
+    if (!/[a-z]/.test(password)) {
+      return { valid: false, message: 'La contraseña debe contener al menos una letra minúscula' };
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      return { valid: false, message: 'La contraseña debe contener al menos un carácter especial (!@#$%^&*(),.?":{}|<>)' };
+    }
+    return { valid: true, message: '' };
+  };
+
   const handleCreateDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Validar que las contraseñas coincidan
+    if (newDoctor.password !== newDoctor.confirmPassword) {
+      setErrorMessage('Las contraseñas no coinciden. Por favor, verifica que ambas sean iguales.');
+      setShowErrorModal(true);
+      return;
+    }
+
+    // Validar fortaleza de la contraseña
+    const passwordValidation = validatePassword(newDoctor.password);
+    if (!passwordValidation.valid) {
+      setErrorMessage(passwordValidation.message);
+      setShowErrorModal(true);
+      return;
+    }
+
     console.log('Submitting doctor data:', newDoctor);
-    
+
     try {
       const token = localStorage.getItem('token');
+      // Remover confirmPassword antes de enviar
+      const { confirmPassword, ...doctorData } = newDoctor;
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/doctors`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(newDoctor)
+        body: JSON.stringify(doctorData)
       });
       
       console.log('Response status:', response.status);
@@ -302,6 +336,7 @@ const EmpresaDashboard: React.FC = () => {
           telefono: '',
           email: '',
           password: '',
+          confirmPassword: '',
           consultorio: {
             numero: '',
             nombre: ''
@@ -1162,7 +1197,7 @@ const EmpresaDashboard: React.FC = () => {
               {/* Información de Acceso */}
               <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Información de Acceso</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
                     <input
@@ -1173,15 +1208,33 @@ const EmpresaDashboard: React.FC = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Contraseña *</label>
                     <input
                       type="password"
                       required
+                      minLength={8}
                       value={newDoctor.password}
                       onChange={(e) => setNewDoctor({...newDoctor, password: e.target.value})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="Mínimo 8 caracteres"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Debe contener: letra mayúscula, letra minúscula y un carácter especial
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Confirmar Contraseña *</label>
+                    <input
+                      type="password"
+                      required
+                      minLength={8}
+                      value={newDoctor.confirmPassword}
+                      onChange={(e) => setNewDoctor({...newDoctor, confirmPassword: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="Repita la contraseña"
                     />
                   </div>
                 </div>
