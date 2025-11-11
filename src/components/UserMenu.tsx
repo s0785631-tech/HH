@@ -20,10 +20,18 @@ import {
 interface UserMenuProps {
   userRole: string;
   onLogout: () => void;
+  notificationCount?: number;
+  onShowNotifications?: () => void;
   onMenuAction: (action: string, data?: any) => void;
 }
 
-const UserMenu: React.FC<UserMenuProps> = ({ userRole, onLogout, onMenuAction }) => {
+const UserMenu: React.FC<UserMenuProps> = ({ 
+  userRole, 
+  onLogout, 
+  notificationCount = 0,
+  onShowNotifications,
+  onMenuAction 
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -156,19 +164,125 @@ const UserMenu: React.FC<UserMenuProps> = ({ userRole, onLogout, onMenuAction })
 
   return (
     <div className="relative" ref={menuRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center space-x-3 px-4 py-2 rounded-lg bg-gradient-to-r ${getRoleColor(userRole)} text-white hover:shadow-lg transform hover:scale-105 transition-all duration-300`}
-      >
-        <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-          <User className="w-5 h-5" />
+      <div className="flex items-center space-x-3">
+        {/* Notification Bell */}
+        {onShowNotifications && (
+          <button
+            onClick={onShowNotifications}
+            className="relative p-2 text-white hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors"
+          >
+            <Bell className="w-5 h-5" />
+            {notificationCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                {notificationCount > 99 ? '99+' : notificationCount}
+              </span>
+            )}
+          </button>
+        )}
+        
+        {/* User Menu Button */}
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className={`flex items-center space-x-3 px-4 py-2 rounded-lg bg-gradient-to-r ${getRoleColor(userRole)} text-white hover:shadow-lg transform hover:scale-105 transition-all duration-300`}
+        >
+          <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+            <User className="w-5 h-5" />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-medium">{user.name || 'Usuario'}</p>
+            <p className="text-xs opacity-75">{getRoleDisplayName(userRole)}</p>
+          </div>
+          <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
+
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 animate-dropdown">
+          {/* User Profile Section */}
+          <div className={`p-4 bg-gradient-to-r ${getRoleColor(userRole)} text-white rounded-t-xl`}>
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                <User className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold">{user.name || 'Usuario'}</h3>
+                <p className="text-sm opacity-75">{getRoleDisplayName(userRole)}</p>
+                <p className="text-xs opacity-60">
+                  {user.doctorInfo?.cedula || user.id || user.documentNumber}
+                </p>
+                {user.doctorInfo?.especialidad && (
+                  <p className="text-xs opacity-60">{user.doctorInfo.especialidad}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Automation Status */}
+          <div className="px-4 py-3 bg-green-50 border-b border-gray-200">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm text-green-700 font-medium">Sistema Automatizado Activo</span>
+            </div>
+            <p className="text-xs text-green-600 mt-1">
+              Recordatorios, asignaciones y notificaciones automáticas habilitadas
+            </p>
+          </div>
+
+          {/* Menu Items */}
+          <div className="py-2">
+            {menuItems.map((section, index) => (
+              <div key={index} className="border-b border-gray-100 last:border-b-0">
+                <button
+                  onClick={() => setActiveSubmenu(activeSubmenu === section.title ? null : section.title)}
+                  className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors duration-200"
+                >
+                  <div className="flex items-center space-x-3">
+                    <section.icon className="w-5 h-5 text-gray-600" />
+                    <span className="font-medium text-gray-900">{section.title}</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+                    activeSubmenu === section.title ? 'rotate-180' : ''
+                  }`} />
+                </button>
+                
+                {activeSubmenu === section.title && (
+                  <div className="bg-gray-50 animate-submenu">
+                    {section.items.map((item, itemIndex) => (
+                      <button
+                        key={itemIndex}
+                        onClick={item.action}
+                        className="w-full px-8 py-2 flex items-center space-x-3 hover:bg-gray-100 transition-colors duration-200 text-left"
+                      >
+                        <item.icon className="w-4 h-4 text-gray-500" />
+                        <span className="text-sm text-gray-700">{item.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Profile and Logout */}
+            <div className="border-t border-gray-200 mt-2 pt-2">
+              <button
+                onClick={() => onMenuAction('ver-perfil')}
+                className="w-full px-4 py-3 flex items-center space-x-3 hover:bg-gray-50 transition-colors duration-200"
+              >
+                <Settings className="w-5 h-5 text-gray-600" />
+                <span className="font-medium text-gray-900">Mi Perfil</span>
+              </button>
+              
+              <button
+                onClick={onLogout}
+                className="w-full px-4 py-3 flex items-center space-x-3 hover:bg-red-50 text-red-600 transition-colors duration-200"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="font-medium">Cerrar Sesión</span>
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="text-left">
-          <p className="text-sm font-medium">{user.name || 'Usuario'}</p>
-          <p className="text-xs opacity-75">{getRoleDisplayName(userRole)}</p>
-        </div>
-        <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
+      )}
 
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 animate-dropdown">

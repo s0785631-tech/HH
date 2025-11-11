@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useEffect } from 'react';
+import { automationService } from './services/automationService';
+import NotificationCenter from './components/NotificationCenter';
 import UserMenu from './components/UserMenu';
 import EmpresaDashboard from './components/dashboards/EmpresaDashboard';
 import RecepcionDashboard from './components/dashboards/RecepcionDashboard';
@@ -22,6 +24,8 @@ const getRoleColor = (role: string) => {
 function App() {
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   useEffect(() => {
     // Verificar si hay una sesión activa al cargar la aplicación
@@ -46,6 +50,22 @@ function App() {
     };
 
     checkExistingSession();
+    
+    // Inicializar sistema de automatización
+    console.log('🚀 Iniciando sistema de automatización SAVISER...');
+    
+    // Listener para notificaciones del sistema
+    const handleSystemNotification = () => {
+      setNotificationCount(prev => prev + 1);
+    };
+    
+    window.addEventListener('system_notification', handleSystemNotification);
+    
+    // Cleanup al desmontar
+    return () => {
+      window.removeEventListener('system_notification', handleSystemNotification);
+      automationService.cleanup();
+    };
   }, []);
 
   const handleLogin = (role) => {
@@ -71,6 +91,9 @@ function App() {
     setUserRole(null);
   };
 
+  const handleNotificationRead = (id: string) => {
+    setNotificationCount(prev => Math.max(0, prev - 1));
+  };
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -113,6 +136,8 @@ function App() {
               <UserMenu 
                 userRole={userRole} 
                 onLogout={handleLogout}
+                notificationCount={notificationCount}
+                onShowNotifications={() => setShowNotifications(true)}
                 onMenuAction={(action, data) => {
                   // Pasar la acción al dashboard correspondiente
                   const event = new CustomEvent('menuAction', { detail: { action, data } });
@@ -124,6 +149,13 @@ function App() {
         </div>
       )}
       {renderDashboard()}
+      
+      {/* Centro de Notificaciones */}
+      <NotificationCenter
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        onNotificationRead={handleNotificationRead}
+      />
     </div>
   );
 }
