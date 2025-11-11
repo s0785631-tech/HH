@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { automation } from '../../services/automationService';
 import { 
   Stethoscope, 
   Users, 
@@ -299,6 +300,9 @@ const ConsultorioDashboard: React.FC = () => {
         setSuccessMessage('¡Consulta guardada exitosamente!');
         setShowSuccessToast(true);
         setActiveTab('consultas');
+        
+        // Disparar evento de automatización para consulta completada
+        automation.onConsultationCompleted(savedConsultation);
       } else {
         const errorData = await response.json();
         setErrorMessage(errorData.message || 'Error al guardar la consulta');

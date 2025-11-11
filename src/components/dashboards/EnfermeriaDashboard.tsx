@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { automation } from '../../services/automationService';
 import { 
   Users, 
   AlertTriangle, 
@@ -359,6 +360,7 @@ const EnfermeriaDashboard: React.FC = () => {
       });
       
       if (response.ok) {
+        const savedTriage = await response.json();
         fetchTriajes();
         setMostrarFormulario(false);
         setSelectedPatient(null);
@@ -377,6 +379,12 @@ const EnfermeriaDashboard: React.FC = () => {
         setSuccessMessage('¡Triaje guardado exitosamente!');
         setShowSuccessToast(true);
         setActiveTab('triajes');
+        
+        // Disparar evento de automatización para el nuevo triaje
+        automation.onTriageCreated({
+          ...savedTriage,
+          pacienteId: selectedPatient
+        });
       } else {
         const errorData = await response.json();
         setErrorMessage(errorData.message || 'Error al crear triaje');

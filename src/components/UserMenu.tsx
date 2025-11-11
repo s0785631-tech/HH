@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import AutomationPanel from './AutomationPanel';
 import { 
   ChevronDown, 
   User, 
@@ -34,6 +35,7 @@ const UserMenu: React.FC<UserMenuProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
+  const [showAutomationPanel, setShowAutomationPanel] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -83,6 +85,14 @@ const UserMenu: React.FC<UserMenuProps> = ({
               { title: 'Nuevo Doctor', icon: UserPlus, action: () => onMenuAction('nuevo-doctor') },
               { title: 'Gestión de Doctores', icon: Stethoscope, action: () => onMenuAction('gestion-doctores') },
               { title: 'Configuración', icon: Settings, action: () => onMenuAction('configuracion') }
+            ]
+          },
+          {
+            title: 'Automatización',
+            icon: BarChart3,
+            items: [
+              { title: 'Panel de Control', icon: Settings, action: () => setShowAutomationPanel(true) },
+              { title: 'Reglas Activas', icon: CheckCircle, action: () => onMenuAction('reglas-activas') }
             ]
           },
           {
@@ -360,6 +370,12 @@ const UserMenu: React.FC<UserMenuProps> = ({
           </div>
         </div>
       )}
+      
+      {/* Panel de Automatización */}
+      <AutomationPanel
+        isOpen={showAutomationPanel}
+        onClose={() => setShowAutomationPanel(false)}
+      />
 
       <style jsx>{`
         @keyframes dropdown {
