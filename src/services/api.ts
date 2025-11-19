@@ -108,4 +108,20 @@ export const patientAssignmentsAPI = {
   getStats: () => api.get('/patient-assignments/stats/doctor'),
 };
 
+export const especialidadesAPI = {
+  getAll: () => api.get('/especialidades'),
+  getById: (id: string) => api.get(`/especialidades/${id}`),
+  create: (data: any) => api.post('/especialidades', data),
+  update: (id: string, data: any) => api.put(`/especialidades/${id}`, data),
+  delete: (id: string) => api.delete(`/especialidades/${id}`),
+};
+
+export const consultoriosAPI = {
+  getAll: () => api.get('/consultorios'),
+  getById: (id: string) => api.get(`/consultorios/${id}`),
+  create: (data: any) => api.post('/consultorios', data),
+  update: (id: string, data: any) => api.put(`/consultorios/${id}`, data),
+  delete: (id: string) => api.delete(`/consultorios/${id}`),
+};
+
 export default api;

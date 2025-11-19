@@ -3,6 +3,7 @@ import { Users, Calendar, TrendingUp, Activity, UserPlus, Stethoscope, Building2
 import ErrorModal from '../ErrorModal';
 import SuccessToast from '../SuccessToast';
 import { PDFGenerator } from '../../utils/pdfGenerator';
+import { especialidadesAPI, consultoriosAPI } from '../../services/api';
 
 interface Doctor {
   _id: string;
@@ -76,19 +77,8 @@ const EmpresaDashboard: React.FC = () => {
   });
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [especialidades, setEspecialidades] = useState<Especialidad[]>([
-    { id: '1', nombre: 'Medicina General', descripcion: 'Atención médica general', activa: true },
-    { id: '2', nombre: 'Cardiología', descripcion: 'Especialidad del corazón', activa: true },
-    { id: '3', nombre: 'Pediatría', descripcion: 'Medicina infantil', activa: true },
-    { id: '4', nombre: 'Ginecología', descripcion: 'Salud femenina', activa: true },
-    { id: '5', nombre: 'Dermatología', descripcion: 'Enfermedades de la piel', activa: true }
-  ]);
-  const [consultorios, setConsultorios] = useState<Consultorio[]>([
-    { id: '1', numero: '101', nombre: 'Consultorio Principal', ubicacion: 'Primer Piso', equipamiento: ['Camilla', 'Tensiómetro', 'Estetoscopio'], activo: true },
-    { id: '2', numero: '102', nombre: 'Consultorio Cardiología', ubicacion: 'Primer Piso', equipamiento: ['ECG', 'Monitor Cardíaco'], activo: true },
-    { id: '3', numero: '201', nombre: 'Consultorio Pediatría', ubicacion: 'Segundo Piso', equipamiento: ['Báscula Pediátrica', 'Tallímetro'], activo: true },
-    { id: '4', numero: '202', nombre: 'Consultorio Ginecología', ubicacion: 'Segundo Piso', equipamiento: ['Mesa Ginecológica', 'Colposcopio'], activo: true }
-  ]);
+  const [especialidades, setEspecialidades] = useState<Especialidad[]>([]);
+  const [consultorios, setConsultorios] = useState<Consultorio[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'doctores' | 'nuevo-doctor' | 'reportes' | 'especialidades' | 'consultorios' | 'pacientes'>('dashboard');
@@ -145,7 +135,9 @@ const EmpresaDashboard: React.FC = () => {
     fetchStats();
     fetchDoctors();
     fetchPatients();
-    
+    fetchEspecialidades();
+    fetchConsultorios();
+
     // Escuchar acciones del menú
     const handleMenuAction = (event: any) => {
       const { action } = event.detail;
@@ -208,6 +200,38 @@ const EmpresaDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error fetching doctors:', error);
       setDoctors([]);
+    }
+  };
+
+  const fetchEspecialidades = async () => {
+    try {
+      const response = await especialidadesAPI.getAll();
+      setEspecialidades(response.data.map((esp: any) => ({
+        id: esp._id,
+        nombre: esp.nombre,
+        descripcion: esp.descripcion,
+        activa: esp.activa
+      })));
+    } catch (error) {
+      console.error('Error fetching especialidades:', error);
+      setEspecialidades([]);
+    }
+  };
+
+  const fetchConsultorios = async () => {
+    try {
+      const response = await consultoriosAPI.getAll();
+      setConsultorios(response.data.map((cons: any) => ({
+        id: cons._id,
+        numero: cons.numero,
+        nombre: cons.nombre,
+        ubicacion: cons.ubicacion,
+        equipamiento: cons.equipamiento,
+        activo: cons.activo
+      })));
+    } catch (error) {
+      console.error('Error fetching consultorios:', error);
+      setConsultorios([]);
     }
   };
 
@@ -366,47 +390,55 @@ const EmpresaDashboard: React.FC = () => {
     }
   };
 
-  const handleCreateEspecialidad = (e: React.FormEvent) => {
+  const handleCreateEspecialidad = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const nuevaEspecialidad: Especialidad = {
-      id: Date.now().toString(),
-      ...newEspecialidad
-    };
-    
-    setEspecialidades([...especialidades, nuevaEspecialidad]);
-    setShowEspecialidadModal(false);
-    setNewEspecialidad({
-      nombre: '',
-      descripcion: '',
-      activa: true
-    });
-    
-    setSuccessMessage('¡Especialidad agregada exitosamente!');
-    setShowSuccessToast(true);
+
+    try {
+      await especialidadesAPI.create(newEspecialidad);
+      fetchEspecialidades();
+      setShowEspecialidadModal(false);
+      setNewEspecialidad({
+        nombre: '',
+        descripcion: '',
+        activa: true
+      });
+
+      setSuccessMessage('¡Especialidad agregada exitosamente!');
+      setShowSuccessToast(true);
+    } catch (error: any) {
+      console.error('Error creating especialidad:', error);
+      setErrorMessage(error.response?.data?.message || 'Error al crear la especialidad');
+      setShowErrorModal(true);
+    }
   };
 
-  const handleCreateConsultorio = (e: React.FormEvent) => {
+  const handleCreateConsultorio = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const nuevoConsultorio: Consultorio = {
-      id: Date.now().toString(),
-      ...newConsultorio,
-      equipamiento: newConsultorio.equipamiento.filter(eq => eq.trim() !== '')
-    };
-    
-    setConsultorios([...consultorios, nuevoConsultorio]);
-    setShowConsultorioModal(false);
-    setNewConsultorio({
-      numero: '',
-      nombre: '',
-      ubicacion: '',
-      equipamiento: [''],
-      activo: true
-    });
-    
-    setSuccessMessage('¡Consultorio agregado exitosamente!');
-    setShowSuccessToast(true);
+
+    try {
+      const consultorioData = {
+        ...newConsultorio,
+        equipamiento: newConsultorio.equipamiento.filter(eq => eq.trim() !== '')
+      };
+
+      await consultoriosAPI.create(consultorioData);
+      fetchConsultorios();
+      setShowConsultorioModal(false);
+      setNewConsultorio({
+        numero: '',
+        nombre: '',
+        ubicacion: '',
+        equipamiento: [''],
+        activo: true
+      });
+
+      setSuccessMessage('¡Consultorio agregado exitosamente!');
+      setShowSuccessToast(true);
+    } catch (error: any) {
+      console.error('Error creating consultorio:', error);
+      setErrorMessage(error.response?.data?.message || 'Error al crear el consultorio');
+      setShowErrorModal(true);
+    }
   };
 
   const updateHorario = (index: number, field: string, value: any) => {
@@ -439,16 +471,36 @@ const EmpresaDashboard: React.FC = () => {
     });
   };
 
-  const toggleEspecialidad = (id: string) => {
-    setEspecialidades(especialidades.map(esp => 
-      esp.id === id ? { ...esp, activa: !esp.activa } : esp
-    ));
+  const toggleEspecialidad = async (id: string) => {
+    try {
+      const especialidad = especialidades.find(esp => esp.id === id);
+      if (especialidad) {
+        await especialidadesAPI.update(id, { activa: !especialidad.activa });
+        fetchEspecialidades();
+        setSuccessMessage('Estado de especialidad actualizado');
+        setShowSuccessToast(true);
+      }
+    } catch (error: any) {
+      console.error('Error updating especialidad:', error);
+      setErrorMessage(error.response?.data?.message || 'Error al actualizar la especialidad');
+      setShowErrorModal(true);
+    }
   };
 
-  const toggleConsultorio = (id: string) => {
-    setConsultorios(consultorios.map(cons => 
-      cons.id === id ? { ...cons, activo: !cons.activo } : cons
-    ));
+  const toggleConsultorio = async (id: string) => {
+    try {
+      const consultorio = consultorios.find(cons => cons.id === id);
+      if (consultorio) {
+        await consultoriosAPI.update(id, { activo: !consultorio.activo });
+        fetchConsultorios();
+        setSuccessMessage('Estado de consultorio actualizado');
+        setShowSuccessToast(true);
+      }
+    } catch (error: any) {
+      console.error('Error updating consultorio:', error);
+      setErrorMessage(error.response?.data?.message || 'Error al actualizar el consultorio');
+      setShowErrorModal(true);
+    }
   };
 
   const calculateAge = (birthDate: string) => {
