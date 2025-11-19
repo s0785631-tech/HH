@@ -1,28 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { automation } from '../../services/automationService';
-import { 
-  Building2, 
-  Users, 
-  Stethoscope, 
-  BarChart3, 
-  UserPlus, 
-  FileText, 
-  Settings,
-  TrendingUp,
-  Calendar,
-  Activity,
-  Shield,
-  CheckCircle,
-  AlertTriangle,
-  Clock,
-  Search,
-  Edit,
-  Trash2,
-  Eye,
-  Download,
-  Plus,
-  X
-} from 'lucide-react';
+import { Building2, Users, Stethoscope, BarChart3, UserPlus, FileText, Settings, TrendingUp, Calendar, Activity, Shield, CheckCircle, AlertTriangle, Clock, Search, CreditCard as Edit, Trash2, Eye, Download, Plus, X } from 'lucide-react';
 import { useAPI } from '../../hooks/useAPI';
 import { PDFGenerator } from '../../utils/pdfGenerator';
 import ErrorModal from '../ErrorModal';
