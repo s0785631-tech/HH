@@ -1,5 +1,6 @@
 import axios from 'axios';
-
+// Importar las APIs en el hook
+import { especialidadesAPI, consultoriosAPI } from '../services/api';
 // Detectar automáticamente la URL base
 const getBaseURL = () => {
   if (typeof window !== 'undefined') {
@@ -128,8 +129,5 @@ export const consultoriosAPI = {
   update: (id: string, data: any) => api.put(`/consultorios/${id}`, data),
   delete: (id: string) => api.delete(`/consultorios/${id}`),
 };
-
-// Importar las APIs en el hook
-import { especialidadesAPI, consultoriosAPI } from '../services/api';
 
 export default api;
