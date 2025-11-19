@@ -36,6 +36,15 @@ const PatientSchema = new mongoose.Schema({
     required: true,
     enum: ['M', 'F']
   },
+  tipoAfiliacion: {
+    type: String,
+    required: true,
+    enum: ['contributivo', 'subsidiado'],
+    default: 'contributivo'
+  },
+  eps: {
+    type: String
+  },
   tipoSangre: {
     type: String
   },

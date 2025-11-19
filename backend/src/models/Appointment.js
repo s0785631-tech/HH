@@ -32,6 +32,14 @@ const AppointmentSchema = new mongoose.Schema({
   notas: {
     type: String
   },
+  copago: {
+    type: Number,
+    default: 0
+  },
+  pagoCopago: {
+    type: Boolean,
+    default: false
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

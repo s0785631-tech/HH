@@ -15,6 +15,8 @@ interface Patient {
   email?: string;
   direccion: string;
   genero: 'M' | 'F';
+  tipoAfiliacion: 'contributivo' | 'subsidiado';
+  eps?: string;
   contactoEmergencia: {
     nombre: string;
     telefono: string;
@@ -50,6 +52,8 @@ interface Appointment {
   motivo: string;
   estado: 'programada' | 'confirmada' | 'en_curso' | 'completada' | 'cancelada' | 'no_asistio';
   notas?: string;
+  copago?: number;
+  pagoCopago?: boolean;
   createdAt: string;
 }
 
@@ -75,6 +79,10 @@ const RecepcionDashboard: React.FC = () => {
   
   // Estados para búsqueda
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchCedula, setSearchCedula] = useState('');
+  const [selectedPatientForAppointment, setSelectedPatientForAppointment] = useState<Patient | null>(null);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
 
@@ -88,6 +96,8 @@ const RecepcionDashboard: React.FC = () => {
     email: '',
     direccion: '',
     genero: 'M',
+    tipoAfiliacion: 'contributivo',
+    eps: '',
     contactoEmergencia: {
       nombre: '',
       telefono: '',
@@ -101,7 +111,9 @@ const RecepcionDashboard: React.FC = () => {
     fecha: '',
     hora: '',
     motivo: '',
-    notas: ''
+    notas: '',
+    copago: 0,
+    pagoCopago: false
   });
 
   const api = useAPI();
@@ -152,6 +164,80 @@ const RecepcionDashboard: React.FC = () => {
     setFilteredAppointments(filteredAppts);
   }, [searchTerm, patients, appointments]);
 
+  // Buscar paciente por cédula
+  const searchPatientByCedula = async () => {
+    if (!searchCedula.trim()) return;
+    
+    try {
+      const foundPatient = patients.find(p => p.cedula === searchCedula.trim());
+      if (foundPatient) {
+        setSelectedPatientForAppointment(foundPatient);
+        setNewAppointment({
+          ...newAppointment,
+          pacienteId: foundPatient._id,
+          copago: foundPatient.tipoAfiliacion === 'contributivo' ? 15000 : 0
+        });
+      } else {
+        setErrorMessage('Paciente no encontrado con esa cédula');
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      setErrorMessage('Error al buscar paciente');
+      setShowErrorModal(true);
+    }
+  };
+
+  // Obtener fechas disponibles del doctor
+  const getAvailableDates = async (doctorId: string) => {
+    if (!doctorId) return;
+    
+    try {
+      // Generar próximos 30 días
+      const dates = [];
+      const today = new Date();
+      
+      for (let i = 1; i <= 30; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        
+        // Excluir domingos (día 0)
+        if (date.getDay() !== 0) {
+          dates.push(date.toISOString().split('T')[0]);
+        }
+      }
+      
+      setAvailableDates(dates);
+    } catch (error) {
+      console.error('Error getting available dates:', error);
+    }
+  };
+
+  // Obtener horarios disponibles para una fecha específica
+  const getAvailableTimes = async (doctorId: string, fecha: string) => {
+    if (!doctorId || !fecha) return;
+    
+    try {
+      // Horarios estándar (8:00 AM - 5:00 PM)
+      const standardTimes = [
+        '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
+        '11:00', '11:30', '14:00', '14:30', '15:00', '15:30',
+        '16:00', '16:30', '17:00'
+      ];
+      
+      // Obtener citas existentes para esa fecha
+      const existingAppointments = appointments.filter(apt => 
+        apt.medicoId._id === doctorId && apt.fecha === fecha
+      );
+      
+      const occupiedTimes = existingAppointments.map(apt => apt.hora);
+      const availableTimes = standardTimes.filter(time => !occupiedTimes.includes(time));
+      
+      setAvailableTimes(availableTimes);
+    } catch (error) {
+      console.error('Error getting available times:', error);
+    }
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -187,6 +273,8 @@ const RecepcionDashboard: React.FC = () => {
         email: '',
         direccion: '',
         genero: 'M',
+        tipoAfiliacion: 'contributivo',
+        eps: '',
         contactoEmergencia: {
           nombre: '',
           telefono: '',
@@ -218,7 +306,9 @@ const RecepcionDashboard: React.FC = () => {
         fecha: '',
         hora: '',
         motivo: '',
-        notas: ''
+        notas: '',
+        copago: 0,
+        pagoCopago: false
       });
       fetchData();
       setSuccessMessage('¡Cita creada exitosamente!');
@@ -473,6 +563,22 @@ const RecepcionDashboard: React.FC = () => {
                           <span className="font-medium">Género:</span>
                           <span>{patient.genero === 'M' ? 'Masculino' : 'Femenino'}</span>
                         </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium">Afiliación:</span>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            patient.tipoAfiliacion === 'contributivo' 
+                              ? 'bg-blue-100 text-blue-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {patient.tipoAfiliacion.toUpperCase()}
+                          </span>
+                        </div>
+                        {patient.eps && (
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium">EPS:</span>
+                            <span>{patient.eps}</span>
+                          </div>
+                        )}
                         {patient.email && (
                           <div className="flex items-center space-x-2">
                             <Mail className="w-4 h-4" />
@@ -558,6 +664,21 @@ const RecepcionDashboard: React.FC = () => {
                       {appointment.notas && (
                         <p className="text-sm text-gray-600 italic">Notas: {appointment.notas}</p>
                       )}
+                      {appointment.copago && appointment.copago > 0 && (
+                        <div className="mt-2 flex items-center space-x-2">
+                          <span className="text-sm font-medium text-gray-700">Copago:</span>
+                          <span className="text-sm text-green-600 font-semibold">
+                            ${appointment.copago.toLocaleString()}
+                          </span>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            appointment.pagoCopago 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {appointment.pagoCopago ? 'PAGADO' : 'PENDIENTE'}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="flex space-x-2">
@@ -596,26 +717,44 @@ const RecepcionDashboard: React.FC = () => {
             </div>
             
             <form onSubmit={handleCreateAppointment} className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Paciente *
-                  </label>
-                  <select
-                    required
-                    value={newAppointment.pacienteId}
-                    onChange={(e) => setNewAppointment({...newAppointment, pacienteId: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              {/* Búsqueda de paciente por cédula */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Buscar Paciente por Cédula *
+                </label>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={searchCedula}
+                    onChange={(e) => setSearchCedula(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="Ingrese número de cédula"
+                  />
+                  <button
+                    type="button"
+                    onClick={searchPatientByCedula}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    <option value="">Seleccionar paciente</option>
-                    {patients.filter(p => p.isActive).map(patient => (
-                      <option key={patient._id} value={patient._id}>
-                        {patient.nombre} {patient.apellido} - {patient.cedula}
-                      </option>
-                    ))}
-                  </select>
+                    <Search className="w-4 h-4" />
+                  </button>
                 </div>
                 
+                {selectedPatientForAppointment && (
+                  <div className="mt-3 p-3 bg-green-50 rounded-lg">
+                    <p className="text-sm font-medium text-green-800">
+                      Paciente encontrado: {selectedPatientForAppointment.nombre} {selectedPatientForAppointment.apellido}
+                    </p>
+                    <p className="text-xs text-green-600">
+                      {selectedPatientForAppointment.tipoAfiliacion === 'contributivo' ? 
+                        `Contributivo - EPS: ${selectedPatientForAppointment.eps || 'No especificada'}` : 
+                        'Subsidiado'
+                      }
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Médico *
@@ -623,7 +762,10 @@ const RecepcionDashboard: React.FC = () => {
                   <select
                     required
                     value={newAppointment.medicoId}
-                    onChange={(e) => setNewAppointment({...newAppointment, medicoId: e.target.value})}
+                    onChange={(e) => {
+                      setNewAppointment({...newAppointment, medicoId: e.target.value});
+                      getAvailableDates(e.target.value);
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   >
                     <option value="">Seleccionar médico</option>
@@ -641,26 +783,46 @@ const RecepcionDashboard: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Fecha *
                   </label>
-                  <input
-                    type="date"
+                  <select
                     required
                     value={newAppointment.fecha}
-                    onChange={(e) => setNewAppointment({...newAppointment, fecha: e.target.value})}
+                    onChange={(e) => {
+                      setNewAppointment({...newAppointment, fecha: e.target.value});
+                      getAvailableTimes(newAppointment.medicoId, e.target.value);
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  />
+                  >
+                    <option value="">Seleccionar fecha</option>
+                    {availableDates.map(date => (
+                      <option key={date} value={date}>
+                        {new Date(date).toLocaleDateString('es-ES', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Hora *
                   </label>
-                  <input
-                    type="time"
+                  <select
                     required
                     value={newAppointment.hora}
                     onChange={(e) => setNewAppointment({...newAppointment, hora: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  />
+                  >
+                    <option value="">Seleccionar hora</option>
+                    {availableTimes.map(time => (
+                      <option key={time} value={time}>
+                        {time}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
               
@@ -691,10 +853,43 @@ const RecepcionDashboard: React.FC = () => {
                 />
               </div>
               
+              {/* Información de copago */}
+              {selectedPatientForAppointment?.tipoAfiliacion === 'contributivo' && (
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <h3 className="text-sm font-medium text-yellow-800 mb-2">Información de Copago</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-yellow-700 mb-1">
+                        Valor del Copago
+                      </label>
+                      <input
+                        type="number"
+                        value={newAppointment.copago}
+                        onChange={(e) => setNewAppointment({...newAppointment, copago: parseInt(e.target.value)})}
+                        className="w-full px-3 py-2 border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                        placeholder="15000"
+                      />
+                    </div>
+                    <div className="flex items-center">
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={newAppointment.pagoCopago}
+                          onChange={(e) => setNewAppointment({...newAppointment, pagoCopago: e.target.checked})}
+                          className="rounded border-yellow-300 text-yellow-600 focus:ring-yellow-500"
+                        />
+                        <span className="text-sm text-yellow-700">Copago pagado</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                  disabled={!selectedPatientForAppointment}
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <CalendarPlus className="w-4 h-4" />
                   <span>Programar Cita</span>
@@ -784,6 +979,48 @@ const RecepcionDashboard: React.FC = () => {
                   />
                 </div>
                 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tipo de Afiliación *
+                  </label>
+                  <select
+                    required
+                    value={newPatient.tipoAfiliacion}
+                    onChange={(e) => setNewPatient({...newPatient, tipoAfiliacion: e.target.value as 'contributivo' | 'subsidiado'})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="contributivo">Contributivo</option>
+                    <option value="subsidiado">Subsidiado</option>
+                  </select>
+                </div>
+                
+                {newPatient.tipoAfiliacion === 'contributivo' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      EPS *
+                    </label>
+                    <select
+                      required
+                      value={newPatient.eps}
+                      onChange={(e) => setNewPatient({...newPatient, eps: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                      <option value="">Seleccionar EPS</option>
+                      <option value="Sura">Sura</option>
+                      <option value="Sanitas">Sanitas</option>
+                      <option value="Compensar">Compensar</option>
+                      <option value="Famisanar">Famisanar</option>
+                      <option value="Nueva EPS">Nueva EPS</option>
+                      <option value="Salud Total">Salud Total</option>
+                      <option value="Coomeva">Coomeva</option>
+                      <option value="Medimás">Medimás</option>
+                      <option value="Otra">Otra</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Género *

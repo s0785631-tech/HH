@@ -54,6 +54,8 @@ const EnfermeriaDashboard: React.FC = () => {
   
   // Estados para búsqueda
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchPatientId, setSearchPatientId] = useState('');
+  const [selectedPatientForTriage, setSelectedPatientForTriage] = useState<Patient | null>(null);
   const [filteredTriages, setFilteredTriages] = useState<TriageData[]>([]);
 
   // Estados para formulario de triaje
@@ -63,10 +65,10 @@ const EnfermeriaDashboard: React.FC = () => {
     prioridad: 'media',
     signosVitales: {
       presionArterial: '',
-      temperatura: 36.5,
-      pulso: 70,
-      saturacionOxigeno: 98,
-      frecuenciaRespiratoria: 16
+      temperatura: 36.0,
+      pulso: 60,
+      saturacionOxigeno: 95,
+      frecuenciaRespiratoria: 12
     },
     estado: 'pendiente',
     observaciones: '',
@@ -112,6 +114,60 @@ const EnfermeriaDashboard: React.FC = () => {
     setFilteredTriages(filtered);
   }, [searchTerm, triages]);
 
+  // Buscar paciente por ID/Cédula
+  const searchPatientById = async () => {
+    if (!searchPatientId.trim()) return;
+    
+    try {
+      const foundPatient = patients.find(p => 
+        p._id === searchPatientId.trim() || 
+        p.cedula === searchPatientId.trim()
+      );
+      
+      if (foundPatient) {
+        setSelectedPatientForTriage(foundPatient);
+        setNewTriage({
+          ...newTriage,
+          pacienteId: foundPatient._id
+        });
+      } else {
+        setErrorMessage('Paciente no encontrado con ese ID o cédula');
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      setErrorMessage('Error al buscar paciente');
+      setShowErrorModal(true);
+    }
+  };
+
+  // Validar signos vitales
+  const validateVitalSigns = (signosVitales: any) => {
+    const errors = [];
+    
+    // Temperatura: 35.0°C - 42.0°C
+    if (signosVitales.temperatura < 35.0 || signosVitales.temperatura > 42.0) {
+      errors.push('Temperatura debe estar entre 35.0°C y 42.0°C');
+    }
+    
+    // Pulso: 40 - 200 bpm
+    if (signosVitales.pulso < 40 || signosVitales.pulso > 200) {
+      errors.push('Pulso debe estar entre 40 y 200 bpm');
+    }
+    
+    // Saturación de oxígeno: 70% - 100%
+    if (signosVitales.saturacionOxigeno < 70 || signosVitales.saturacionOxigeno > 100) {
+      errors.push('Saturación de oxígeno debe estar entre 70% y 100%');
+    }
+    
+    // Frecuencia respiratoria: 8 - 40 rpm
+    if (signosVitales.frecuenciaRespiratoria && 
+        (signosVitales.frecuenciaRespiratoria < 8 || signosVitales.frecuenciaRespiratoria > 40)) {
+      errors.push('Frecuencia respiratoria debe estar entre 8 y 40 rpm');
+    }
+    
+    return errors;
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -134,6 +190,14 @@ const EnfermeriaDashboard: React.FC = () => {
   const handleCreateTriage = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validar signos vitales
+    const validationErrors = validateVitalSigns(newTriage.signosVitales);
+    if (validationErrors.length > 0) {
+      setErrorMessage(`Errores en signos vitales:\n${validationErrors.join('\n')}`);
+      setShowErrorModal(true);
+      return;
+    }
+    
     try {
       const triageData = {
         ...newTriage,
@@ -143,16 +207,18 @@ const EnfermeriaDashboard: React.FC = () => {
       const createdTriage = await api.triage.create(triageData);
       
       fetchData();
+      setSelectedPatientForTriage(null);
+      setSearchPatientId('');
       setNewTriage({
         pacienteId: '',
         sintomas: '',
         prioridad: 'media',
         signosVitales: {
           presionArterial: '',
-          temperatura: 36.5,
-          pulso: 70,
-          saturacionOxigeno: 98,
-          frecuenciaRespiratoria: 16
+          temperatura: 36.0,
+          pulso: 60,
+          saturacionOxigeno: 95,
+          frecuenciaRespiratoria: 12
         },
         estado: 'pendiente',
         observaciones: '',
@@ -546,23 +612,38 @@ const EnfermeriaDashboard: React.FC = () => {
             </div>
             
             <form onSubmit={handleCreateTriage} className="p-6 space-y-6">
+              {/* Búsqueda de paciente por ID/Cédula */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Paciente *
+                  Buscar Paciente por ID o Cédula *
                 </label>
-                <select
-                  required
-                  value={newTriage.pacienteId}
-                  onChange={(e) => setNewTriage({...newTriage, pacienteId: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                >
-                  <option value="">Seleccionar paciente</option>
-                  {patients.filter(p => p.isActive).map(patient => (
-                    <option key={patient._id} value={patient._id}>
-                      {patient.nombre} {patient.apellido} - {patient.cedula}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={searchPatientId}
+                    onChange={(e) => setSearchPatientId(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Ingrese ID del paciente o número de cédula"
+                  />
+                  <button
+                    type="button"
+                    onClick={searchPatientById}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Search className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                {selectedPatientForTriage && (
+                  <div className="mt-3 p-3 bg-green-50 rounded-lg">
+                    <p className="text-sm font-medium text-green-800">
+                      Paciente encontrado: {selectedPatientForTriage.nombre} {selectedPatientForTriage.apellido}
+                    </p>
+                    <p className="text-xs text-green-600">
+                      C.I: {selectedPatientForTriage.cedula} - Edad: {calculateAge(selectedPatientForTriage.fechaNacimiento)} años
+                    </p>
+                  </div>
+                )}
               </div>
               
               <div>
@@ -618,20 +699,21 @@ const EnfermeriaDashboard: React.FC = () => {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Temperatura (°C) *
+                      Temperatura (°C) * (35.0 - 42.0)
                     </label>
                     <input
                       type="number"
                       required
                       step="0.1"
-                      min="35"
-                      max="42"
+                      min="35.0"
+                      max="42.0"
                       value={newTriage.signosVitales.temperatura}
                       onChange={(e) => setNewTriage({
                         ...newTriage,
                         signosVitales: {...newTriage.signosVitales, temperatura: parseFloat(e.target.value)}
                       })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      placeholder="36.5"
                     />
                   </div>
                 </div>
@@ -639,7 +721,7 @@ const EnfermeriaDashboard: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Pulso (bpm) *
+                      Pulso (bpm) * (40 - 200)
                     </label>
                     <input
                       type="number"
@@ -652,12 +734,13 @@ const EnfermeriaDashboard: React.FC = () => {
                         signosVitales: {...newTriage.signosVitales, pulso: parseInt(e.target.value)}
                       })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      placeholder="70"
                     />
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Saturación O2 (%) *
+                      Saturación O2 (%) * (70 - 100)
                     </label>
                     <input
                       type="number"
@@ -670,17 +753,18 @@ const EnfermeriaDashboard: React.FC = () => {
                         signosVitales: {...newTriage.signosVitales, saturacionOxigeno: parseInt(e.target.value)}
                       })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      placeholder="98"
                     />
                   </div>
                 </div>
                 
                 <div className="mt-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Frecuencia Respiratoria (rpm)
+                    Frecuencia Respiratoria (rpm) (8 - 40)
                   </label>
                   <input
                     type="number"
-                    min="10"
+                    min="8"
                     max="40"
                     value={newTriage.signosVitales.frecuenciaRespiratoria || ''}
                     onChange={(e) => setNewTriage({
@@ -688,6 +772,7 @@ const EnfermeriaDashboard: React.FC = () => {
                       signosVitales: {...newTriage.signosVitales, frecuenciaRespiratoria: e.target.value ? parseInt(e.target.value) : undefined}
                     })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="16"
                   />
                 </div>
               </div>
@@ -708,7 +793,8 @@ const EnfermeriaDashboard: React.FC = () => {
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+                  disabled={!selectedPatientForTriage}
+                  className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Crear Triaje</span>
