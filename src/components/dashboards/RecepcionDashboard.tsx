@@ -1,24 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { automation } from '../../services/automationService';
-import { 
-  Users, 
-  Calendar, 
-  Clock, 
-  UserPlus, 
-  CalendarPlus,
-  Search,
-  Edit,
-  Trash2,
-  Eye,
-  Phone,
-  Mail,
-  MapPin,
-  User,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  Stethoscope
-} from 'lucide-react';
+import { Users, Calendar, Clock, UserPlus, CalendarPlus, Search, CreditCard as Edit, Trash2, Eye, Phone, Mail, MapPin, User, CheckCircle, XCircle, AlertTriangle, Stethoscope } from 'lucide-react';
 import { useAPI } from '../../hooks/useAPI';
 import ErrorModal from '../ErrorModal';
 import SuccessToast from '../SuccessToast';
