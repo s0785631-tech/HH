@@ -9,11 +9,15 @@ const router = express.Router();
 // Get all doctors
 router.get('/', authMiddleware, async (req, res) => {
   try {
+    console.log('Fetching all doctors...');
     const doctors = await Doctor.find({ isActive: true })
       .populate('userId', 'email name')
       .sort({ apellido: 1, nombre: 1 });
+    
+    console.log(`Found ${doctors.length} doctors`);
     res.json(doctors);
   } catch (error) {
+    console.error('Error fetching doctors:', error);
     res.status(500).json({ message: 'Error del servidor' });
   }
 });

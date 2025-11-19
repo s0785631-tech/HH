@@ -129,4 +129,7 @@ export const consultoriosAPI = {
   delete: (id: string) => api.delete(`/consultorios/${id}`),
 };
 
+// Importar las APIs en el hook
+import { especialidadesAPI, consultoriosAPI } from '../services/api';
+
 export default api;

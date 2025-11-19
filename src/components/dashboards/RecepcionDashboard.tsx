@@ -205,7 +205,13 @@ const RecepcionDashboard: React.FC = () => {
   const handleCreateAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.appointments.create(newAppointment);
+      // Crear la cita con los datos correctos
+      const appointmentData = {
+        ...newAppointment,
+        createdBy: JSON.parse(localStorage.getItem('user') || '{}').id
+      };
+      
+      await api.appointments.create(appointmentData);
       setNewAppointment({
         pacienteId: '',
         medicoId: '',
@@ -219,7 +225,7 @@ const RecepcionDashboard: React.FC = () => {
       setShowSuccessToast(true);
       
       // Disparar evento de automatización
-      automation.scheduleReminder(newAppointment.pacienteId, new Date(newAppointment.fecha));
+      automation.scheduleReminder(appointmentData.pacienteId, new Date(appointmentData.fecha));
     } catch (error) {
       setErrorMessage('Error al crear la cita');
       setShowErrorModal(true);
@@ -623,7 +629,7 @@ const RecepcionDashboard: React.FC = () => {
                     <option value="">Seleccionar médico</option>
                     {doctors.filter(d => d.isActive).map(doctor => (
                       <option key={doctor._id} value={doctor.userId}>
-                        Dr. {doctor.nombre} {doctor.apellido} - {doctor.especialidad}
+                        Dr. {doctor.nombre} {doctor.apellido} - {doctor.especialidad} (Consultorio {doctor.consultorio.numero})
                       </option>
                     ))}
                   </select>

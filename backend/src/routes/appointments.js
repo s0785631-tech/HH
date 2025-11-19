@@ -47,20 +47,32 @@ router.get('/', authMiddleware, async (req, res) => {
 // Create appointment
 router.post('/', authMiddleware, async (req, res) => {
   try {
+    console.log('Creating appointment with data:', req.body);
+    console.log('User from token:', req.user);
+    
     const appointment = new Appointment({
       ...req.body,
       createdBy: req.user.userId
     });
+    
+    console.log('Appointment to save:', appointment);
     await appointment.save();
     
     const populatedAppointment = await Appointment.findById(appointment._id)
       .populate('pacienteId', 'nombre apellido cedula telefono')
-      .populate('medicoId', 'name');
+      .populate({
+        path: 'medicoId',
+        select: 'name email'
+      });
     
+    console.log('Populated appointment:', populatedAppointment);
     res.status(201).json(populatedAppointment);
   } catch (error) {
     console.error('Error creating appointment:', error);
-    res.status(500).json({ message: 'Error del servidor' });
+    res.status(500).json({ 
+      message: 'Error del servidor',
+      error: error.message 
+    });
   }
 });
 

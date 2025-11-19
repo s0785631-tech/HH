@@ -96,5 +96,21 @@ export const useAPI = () => {
       delete: (id: string) => handleRequest(() => patientAssignmentsAPI.delete(id)),
       getStats: () => handleRequest(() => patientAssignmentsAPI.getStats()),
     },
+
+    especialidades: {
+      getAll: () => handleRequest(() => especialidadesAPI.getAll()),
+      getById: (id: string) => handleRequest(() => especialidadesAPI.getById(id)),
+      create: (data: any) => handleRequest(() => especialidadesAPI.create(data)),
+      update: (id: string, data: any) => handleRequest(() => especialidadesAPI.update(id, data)),
+      delete: (id: string) => handleRequest(() => especialidadesAPI.delete(id)),
+    },
+
+    consultorios: {
+      getAll: () => handleRequest(() => consultoriosAPI.getAll()),
+      getById: (id: string) => handleRequest(() => consultoriosAPI.getById(id)),
+      create: (data: any) => handleRequest(() => consultoriosAPI.create(data)),
+      update: (id: string, data: any) => handleRequest(() => consultoriosAPI.update(id, data)),
+      delete: (id: string) => handleRequest(() => consultoriosAPI.delete(id)),
+    },
   };
 };
