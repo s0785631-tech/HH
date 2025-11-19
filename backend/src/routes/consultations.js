@@ -98,4 +98,20 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Delete consultation
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const consultation = await Consultation.findByIdAndDelete(req.params.id);
+    
+    if (!consultation) {
+      return res.status(404).json({ message: 'Consulta no encontrada' });
+    }
+    
+    res.json({ message: 'Consulta eliminada exitosamente' });
+  } catch (error) {
+    console.error('Error deleting consultation:', error);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
 module.exports = router;

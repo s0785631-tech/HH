@@ -45,6 +45,7 @@ export const useAPI = () => {
       search: (query: string) => handleRequest(() => patientsAPI.search(query)),
       create: (data: any) => handleRequest(() => patientsAPI.create(data)),
       update: (id: string, data: any) => handleRequest(() => patientsAPI.update(id, data)),
+      delete: (id: string) => handleRequest(() => patientsAPI.delete(id)),
     },
 
     appointments: {
@@ -52,6 +53,7 @@ export const useAPI = () => {
       getById: (id: string) => handleRequest(() => appointmentsAPI.getById(id)),
       create: (data: any) => handleRequest(() => appointmentsAPI.create(data)),
       update: (id: string, data: any) => handleRequest(() => appointmentsAPI.update(id, data)),
+      delete: (id: string) => handleRequest(() => appointmentsAPI.delete(id)),
     },
 
     triage: {
@@ -59,6 +61,7 @@ export const useAPI = () => {
       getById: (id: string) => handleRequest(() => triageAPI.getById(id)),
       create: (data: any) => handleRequest(() => triageAPI.create(data)),
       update: (id: string, data: any) => handleRequest(() => triageAPI.update(id, data)),
+      delete: (id: string) => handleRequest(() => triageAPI.delete(id)),
     },
 
     consultations: {
@@ -66,6 +69,7 @@ export const useAPI = () => {
       getPendingTriages: () => handleRequest(() => consultationsAPI.getPendingTriages()),
       create: (data: any) => handleRequest(() => consultationsAPI.create(data)),
       update: (id: string, data: any) => handleRequest(() => consultationsAPI.update(id, data)),
+      delete: (id: string) => handleRequest(() => consultationsAPI.delete(id)),
     },
 
     dashboard: {
@@ -80,6 +84,7 @@ export const useAPI = () => {
       getSchedule: (id: string, fecha: string) => handleRequest(() => doctorsAPI.getSchedule(id, fecha)),
       create: (data: any) => handleRequest(() => doctorsAPI.create(data)),
       update: (id: string, data: any) => handleRequest(() => doctorsAPI.update(id, data)),
+      delete: (id: string) => handleRequest(() => doctorsAPI.delete(id)),
     },
 
     patientAssignments: {

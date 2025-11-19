@@ -1,25 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { automation } from '../../services/automationService';
 import { 
-  Users, 
-  AlertTriangle, 
-  Clock, 
+  Shield, 
   Heart, 
   Thermometer, 
-  Activity,
-  Stethoscope,
-  FileText,
+  Activity, 
+  Users,
+  Clock,
+  AlertTriangle,
   CheckCircle,
-  XCircle,
-  User,
-  Calendar,
-  TrendingUp,
-  Shield,
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
   Search,
-  Printer,
-  Download,
-  BarChart3
+  User,
+  Calendar
 } from 'lucide-react';
+import { useAPI } from '../../hooks/useAPI';
 import { PDFGenerator } from '../../utils/pdfGenerator';
 import ErrorModal from '../ErrorModal';
 import SuccessToast from '../SuccessToast';
@@ -34,9 +32,9 @@ interface Patient {
   genero: 'M' | 'F';
 }
 
-interface TriajeData {
+interface TriageData {
   _id?: string;
-  pacienteId: Patient;
+  pacienteId: Patient | string;
   sintomas: string;
   prioridad: 'alta' | 'media' | 'baja';
   signosVitales: {
@@ -48,40 +46,53 @@ interface TriajeData {
   };
   estado: 'pendiente' | 'en_proceso' | 'completado';
   observaciones?: string;
+  enfermeraId?: string;
   fechaHora: string;
 }
 
 const EnfermeriaDashboard: React.FC = () => {
-  const [triajes, setTriajes] = useState<TriajeData[]>([]);
+  const [triages, setTriages] = useState<TriageData[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [searchCedula, setSearchCedula] = useState('');
-  const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'triajes' | 'nuevo-triaje' | 'estadisticas'>('triajes');
-
+  
+  // Estados para modales
+  const [showTriageModal, setShowTriageModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedTriage, setSelectedTriage] = useState<TriageData | null>(null);
+  
   // Estados para notificaciones
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  
+  // Estados para búsqueda y filtros
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterPriority, setFilterPriority] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
 
-  // Estados para validación
-  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
-
-  const [nuevoTriaje, setNuevoTriaje] = useState({
+  // Estado para nuevo triaje
+  const [newTriage, setNewTriage] = useState<TriageData>({
+    pacienteId: '',
     sintomas: '',
-    presionArterial: '',
-    temperatura: '',
-    pulso: '',
-    saturacionOxigeno: '',
-    frecuenciaRespiratoria: '',
-    observaciones: ''
+    prioridad: 'media',
+    signosVitales: {
+      presionArterial: '',
+      temperatura: 36.5,
+      pulso: 70,
+      saturacionOxigeno: 98,
+      frecuenciaRespiratoria: 16
+    },
+    estado: 'pendiente',
+    observaciones: '',
+    fechaHora: new Date().toISOString()
   });
 
+  const api = useAPI();
+
   useEffect(() => {
-    fetchTriajes();
-    fetchPatients();
+    fetchData();
     
     // Escuchar acciones del menú
     const handleMenuAction = (event: any) => {
@@ -100,199 +111,142 @@ const EnfermeriaDashboard: React.FC = () => {
     return () => window.removeEventListener('menuAction', handleMenuAction);
   }, []);
 
-  const fetchTriajes = async () => {
+  const fetchData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const today = new Date().toISOString().split('T')[0];
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/triage?fecha=${today}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      setLoading(true);
+      const [triagesData, patientsData] = await Promise.all([
+        api.triage.getAll(),
+        api.patients.getAll()
+      ]);
       
-      if (response.ok) {
-        const data = await response.json();
-        setTriajes(data);
-      } else {
-        setTriajes([]);
-      }
+      setTriages(triagesData || []);
+      setPatients(patientsData || []);
     } catch (error) {
-      console.error('Error fetching triages:', error);
-      setTriajes([]);
+      console.error('Error fetching data:', error);
+      setErrorMessage('Error al cargar los datos');
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchPatients = async () => {
+  const handleCreateTriage = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/patients`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const triageData = {
+        ...newTriage,
+        fechaHora: new Date().toISOString()
+      };
+      
+      const createdTriage = await api.triage.create(triageData);
+      
+      setShowTriageModal(false);
+      setNewTriage({
+        pacienteId: '',
+        sintomas: '',
+        prioridad: 'media',
+        signosVitales: {
+          presionArterial: '',
+          temperatura: 36.5,
+          pulso: 70,
+          saturacionOxigeno: 98,
+          frecuenciaRespiratoria: 16
+        },
+        estado: 'pendiente',
+        observaciones: '',
+        fechaHora: new Date().toISOString()
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        setPatients(data);
-      } else {
-        setPatients([]);
-      }
-    } catch (error) {
-      console.error('Error fetching patients:', error);
-      setPatients([]);
-    }
-  };
-
-  const searchPatientByCedula = async () => {
-    if (!searchCedula.trim()) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/patients/search/${searchCedula}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      fetchData();
+      setSuccessMessage('¡Triaje creado exitosamente!');
+      setShowSuccessToast(true);
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.length > 0) {
-          setSelectedPatient(data[0]);
-          setMostrarFormulario(true);
-        } else {
-          setErrorMessage('Paciente no encontrado');
-          setShowErrorModal(true);
-        }
-      } else {
-        setErrorMessage('Error al buscar paciente');
-        setShowErrorModal(true);
+      // Disparar evento de automatización para triaje de alta prioridad
+      if (newTriage.prioridad === 'alta') {
+        automation.onTriageCreated(createdTriage);
       }
     } catch (error) {
-      console.error('Error searching patient:', error);
-      setErrorMessage('Error al buscar paciente');
+      setErrorMessage('Error al crear el triaje');
       setShowErrorModal(true);
     }
   };
 
-  // Funciones de validación
-  const validatePresionArterial = (value: string): boolean => {
-    const regex = /^\d{2,3}\/\d{2,3}$/;
-    if (!regex.test(value)) return false;
+  const handleEditTriage = (triage: TriageData) => {
+    setSelectedTriage(triage);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateTriage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTriage) return;
     
-    const [sistolica, diastolica] = value.split('/').map(Number);
-    return sistolica >= 70 && sistolica <= 250 && diastolica >= 40 && diastolica <= 150;
+    try {
+      await api.triage.update(selectedTriage._id!, selectedTriage);
+      setShowEditModal(false);
+      setSelectedTriage(null);
+      fetchData();
+      setSuccessMessage('¡Triaje actualizado exitosamente!');
+      setShowSuccessToast(true);
+    } catch (error) {
+      setErrorMessage('Error al actualizar el triaje');
+      setShowErrorModal(true);
+    }
   };
 
-  const validateTemperatura = (value: string): boolean => {
-    const temp = parseFloat(value);
-    return !isNaN(temp) && temp >= 30 && temp <= 45;
-  };
-
-  const validatePulso = (value: string): boolean => {
-    const pulso = parseInt(value);
-    return !isNaN(pulso) && pulso >= 30 && pulso <= 200;
-  };
-
-  const validateSaturacion = (value: string): boolean => {
-    const saturacion = parseInt(value);
-    return !isNaN(saturacion) && saturacion >= 70 && saturacion <= 100;
-  };
-
-  const validateFrecuenciaRespiratoria = (value: string): boolean => {
-    if (!value) return true; // Campo opcional
-    const freq = parseInt(value);
-    return !isNaN(freq) && freq >= 8 && freq <= 40;
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setNuevoTriaje({ ...nuevoTriaje, [field]: value });
+  const handleDeleteTriage = async (id: string) => {
+    if (!confirm('¿Está seguro de que desea eliminar este triaje?')) return;
     
-    // Limpiar error de validación cuando el usuario empiece a escribir
-    if (validationErrors[field]) {
-      setValidationErrors({ ...validationErrors, [field]: '' });
-    }
-
-    // Validar en tiempo real
-    let isValid = true;
-    let errorMsg = '';
-
-    switch (field) {
-      case 'presionArterial':
-        if (value && !validatePresionArterial(value)) {
-          isValid = false;
-          errorMsg = 'Formato: 120/80 (70-250/40-150)';
-        }
-        break;
-      case 'temperatura':
-        if (value && !validateTemperatura(value)) {
-          isValid = false;
-          errorMsg = 'Rango válido: 30-45°C';
-        }
-        break;
-      case 'pulso':
-        if (value && !validatePulso(value)) {
-          isValid = false;
-          errorMsg = 'Rango válido: 30-200 bpm';
-        }
-        break;
-      case 'saturacionOxigeno':
-        if (value && !validateSaturacion(value)) {
-          isValid = false;
-          errorMsg = 'Rango válido: 70-100%';
-        }
-        break;
-      case 'frecuenciaRespiratoria':
-        if (value && !validateFrecuenciaRespiratoria(value)) {
-          isValid = false;
-          errorMsg = 'Rango válido: 8-40 rpm';
-        }
-        break;
-    }
-
-    if (!isValid) {
-      setValidationErrors({ ...validationErrors, [field]: errorMsg });
+    try {
+      await api.triage.delete(id);
+      fetchData();
+      setSuccessMessage('¡Triaje eliminado exitosamente!');
+      setShowSuccessToast(true);
+    } catch (error) {
+      setErrorMessage('Error al eliminar el triaje');
+      setShowErrorModal(true);
     }
   };
 
-  const validateForm = (): boolean => {
-    const errors: {[key: string]: string} = {};
-
-    if (!nuevoTriaje.sintomas.trim()) {
-      errors.sintomas = 'Los síntomas son obligatorios';
+  const generateTriageReport = async () => {
+    try {
+      const blob = await PDFGenerator.generateTriagesReportPDF(triages);
+      const filename = `reporte_triajes_${new Date().toISOString().split('T')[0]}.pdf`;
+      PDFGenerator.downloadPDF(blob, filename);
+      
+      setSuccessMessage('¡Reporte generado exitosamente!');
+      setShowSuccessToast(true);
+    } catch (error) {
+      console.error('Error generating report:', error);
+      setErrorMessage('Error al generar el reporte');
+      setShowErrorModal(true);
     }
+  };
 
-    if (!nuevoTriaje.presionArterial.trim()) {
-      errors.presionArterial = 'La presión arterial es obligatoria';
-    } else if (!validatePresionArterial(nuevoTriaje.presionArterial)) {
-      errors.presionArterial = 'Formato: 120/80 (70-250/40-150)';
+  const generateSingleTriagePDF = async (triage: TriageData) => {
+    try {
+      const blob = await PDFGenerator.generateSingleTriagePDF(triage);
+      const patient = typeof triage.pacienteId === 'object' ? triage.pacienteId : patients.find(p => p._id === triage.pacienteId);
+      const filename = `triaje_${patient?.nombre}_${patient?.apellido}_${new Date().toISOString().split('T')[0]}.pdf`;
+      PDFGenerator.downloadPDF(blob, filename);
+      
+      setSuccessMessage('¡PDF del triaje generado exitosamente!');
+      setShowSuccessToast(true);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      setErrorMessage('Error al generar el PDF');
+      setShowErrorModal(true);
     }
+  };
 
-    if (!nuevoTriaje.temperatura.trim()) {
-      errors.temperatura = 'La temperatura es obligatoria';
-    } else if (!validateTemperatura(nuevoTriaje.temperatura)) {
-      errors.temperatura = 'Rango válido: 30-45°C';
+  const calculateAge = (birthDate: string) => {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
     }
-
-    if (!nuevoTriaje.pulso.trim()) {
-      errors.pulso = 'El pulso es obligatorio';
-    } else if (!validatePulso(nuevoTriaje.pulso)) {
-      errors.pulso = 'Rango válido: 30-200 bpm';
-    }
-
-    if (!nuevoTriaje.saturacionOxigeno.trim()) {
-      errors.saturacionOxigeno = 'La saturación es obligatoria';
-    } else if (!validateSaturacion(nuevoTriaje.saturacionOxigeno)) {
-      errors.saturacionOxigeno = 'Rango válido: 70-100%';
-    }
-
-    if (nuevoTriaje.frecuenciaRespiratoria && !validateFrecuenciaRespiratoria(nuevoTriaje.frecuenciaRespiratoria)) {
-      errors.frecuenciaRespiratoria = 'Rango válido: 8-40 rpm';
-    }
-
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
+    return age;
   };
 
   const getPrioridadColor = (prioridad: string) => {
@@ -313,203 +267,39 @@ const EnfermeriaDashboard: React.FC = () => {
     }
   };
 
-  const determinarPrioridad = (): 'alta' | 'media' | 'baja' => {
-    const temp = parseFloat(nuevoTriaje.temperatura);
-    const pulso = parseInt(nuevoTriaje.pulso);
-    const saturacion = parseInt(nuevoTriaje.saturacionOxigeno);
+  // Filtrar triajes
+  const filteredTriages = triages.filter(triage => {
+    const patient = typeof triage.pacienteId === 'object' ? triage.pacienteId : patients.find(p => p._id === triage.pacienteId);
+    const matchesSearch = !searchTerm || 
+      patient?.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient?.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient?.cedula.includes(searchTerm) ||
+      triage.sintomas.toLowerCase().includes(searchTerm.toLowerCase());
     
-    if (temp > 38.5 || pulso > 100 || saturacion < 95) return 'alta';
-    if (temp > 37.5 || pulso > 90 || saturacion < 98) return 'media';
-    return 'baja';
-  };
-
-  const handleSubmitTriaje = async (e: React.FormEvent) => {
-    e.preventDefault();
+    const matchesPriority = !filterPriority || triage.prioridad === filterPriority;
+    const matchesStatus = !filterStatus || triage.estado === filterStatus;
     
-    if (!selectedPatient) return;
+    return matchesSearch && matchesPriority && matchesStatus;
+  });
 
-    if (!validateForm()) {
-      setErrorMessage('Por favor corrija los errores en el formulario');
-      setShowErrorModal(true);
-      return;
-    }
-
-    const triageData = {
-      pacienteId: selectedPatient._id,
-      sintomas: nuevoTriaje.sintomas,
-      prioridad: determinarPrioridad(),
-      signosVitales: {
-        presionArterial: nuevoTriaje.presionArterial,
-        temperatura: parseFloat(nuevoTriaje.temperatura),
-        pulso: parseInt(nuevoTriaje.pulso),
-        saturacionOxigeno: parseInt(nuevoTriaje.saturacionOxigeno),
-        frecuenciaRespiratoria: nuevoTriaje.frecuenciaRespiratoria ? parseInt(nuevoTriaje.frecuenciaRespiratoria) : undefined
-      },
-      observaciones: nuevoTriaje.observaciones
-    };
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/triage`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(triageData)
-      });
-      
-      if (response.ok) {
-        const savedTriage = await response.json();
-        fetchTriajes();
-        setMostrarFormulario(false);
-        setSelectedPatient(null);
-        setSearchCedula('');
-        setNuevoTriaje({
-          sintomas: '',
-          presionArterial: '',
-          temperatura: '',
-          pulso: '',
-          saturacionOxigeno: '',
-          frecuenciaRespiratoria: '',
-          observaciones: ''
-        });
-        setValidationErrors({});
-        
-        setSuccessMessage('¡Triaje guardado exitosamente!');
-        setShowSuccessToast(true);
-        setActiveTab('triajes');
-        
-        // Disparar evento de automatización para el nuevo triaje
-        automation.onTriageCreated({
-          ...savedTriage,
-          pacienteId: selectedPatient
-        });
-      } else {
-        const errorData = await response.json();
-        setErrorMessage(errorData.message || 'Error al crear triaje');
-        setShowErrorModal(true);
-      }
-    } catch (error) {
-      console.error('Error creating triage:', error);
-      setErrorMessage('Error de conexión. Verifique su conexión a internet.');
-      setShowErrorModal(true);
-    }
+  const todayStats = {
+    total: triages.length,
+    pendientes: triages.filter(t => t.estado === 'pendiente').length,
+    enProceso: triages.filter(t => t.estado === 'en_proceso').length,
+    completados: triages.filter(t => t.estado === 'completado').length,
+    prioridadAlta: triages.filter(t => t.prioridad === 'alta').length
   };
 
-  const actualizarEstado = async (id: string, nuevoEstado: 'pendiente' | 'en_proceso' | 'completado') => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/triage/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ estado: nuevoEstado })
-      });
-      
-      if (response.ok) {
-        fetchTriajes();
-        setSuccessMessage('Estado actualizado correctamente');
-        setShowSuccessToast(true);
-      }
-    } catch (error) {
-      console.error('Error updating triage status:', error);
-      setErrorMessage('Error al actualizar el estado');
-      setShowErrorModal(true);
-    }
-  };
-
-  const calculateAge = (birthDate: string) => {
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
-  // Funciones de impresión
-  const generateTriagesPDF = async () => {
-    try {
-      setSuccessMessage('Generando reporte de triajes...');
-      setShowSuccessToast(true);
-      
-      const blob = await PDFGenerator.generateTriagesReportPDF(triajes);
-      const filename = `triajes_${new Date().toISOString().split('T')[0]}.pdf`;
-      PDFGenerator.downloadPDF(blob, filename);
-      
-      setTimeout(() => {
-        setSuccessMessage('¡Reporte de triajes generado exitosamente!');
-        setShowSuccessToast(true);
-      }, 1000);
-    } catch (error) {
-      console.error('Error generating triages report:', error);
-      setErrorMessage('Error al generar el reporte de triajes');
-      setShowErrorModal(true);
-    }
-  };
-
-  const generateStatisticsPDF = async () => {
-    try {
-      setSuccessMessage('Generando reporte de estadísticas...');
-      setShowSuccessToast(true);
-      
-      const estadisticas = {
-        total: triajes.length,
-        pendientes: triajes.filter(t => t.estado === 'pendiente').length,
-        enProceso: triajes.filter(t => t.estado === 'en_proceso').length,
-        completados: triajes.filter(t => t.estado === 'completado').length,
-        prioridadAlta: triajes.filter(t => t.prioridad === 'alta').length,
-        prioridadMedia: triajes.filter(t => t.prioridad === 'media').length,
-        prioridadBaja: triajes.filter(t => t.prioridad === 'baja').length
-      };
-      
-      const blob = await PDFGenerator.generateTriageStatisticsPDF(estadisticas, triajes);
-      const filename = `estadisticas_triaje_${new Date().toISOString().split('T')[0]}.pdf`;
-      PDFGenerator.downloadPDF(blob, filename);
-      
-      setTimeout(() => {
-        setSuccessMessage('¡Reporte de estadísticas generado exitosamente!');
-        setShowSuccessToast(true);
-      }, 1000);
-    } catch (error) {
-      console.error('Error generating statistics report:', error);
-      setErrorMessage('Error al generar el reporte de estadísticas');
-      setShowErrorModal(true);
-    }
-  };
-
-  const generatePatientTriagePDF = async (triaje: TriajeData) => {
-    try {
-      setSuccessMessage('Generando triaje del paciente...');
-      setShowSuccessToast(true);
-      
-      const blob = await PDFGenerator.generateSingleTriagePDF(triaje);
-      const filename = `triaje_${triaje.pacienteId.nombre}_${triaje.pacienteId.apellido}_${new Date().toISOString().split('T')[0]}.pdf`;
-      PDFGenerator.downloadPDF(blob, filename);
-      
-      setTimeout(() => {
-        setSuccessMessage('¡Triaje del paciente generado exitosamente!');
-        setShowSuccessToast(true);
-      }, 1000);
-    } catch (error) {
-      console.error('Error generating patient triage:', error);
-      setErrorMessage('Error al generar el triaje del paciente');
-      setShowErrorModal(true);
-    }
-  };
-
-  const estadisticas = {
-    total: triajes.length,
-    pendientes: triajes.filter(t => t.estado === 'pendiente').length,
-    enProceso: triajes.filter(t => t.estado === 'en_proceso').length,
-    completados: triajes.filter(t => t.estado === 'completado').length,
-    prioridadAlta: triajes.filter(t => t.prioridad === 'alta').length
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
@@ -518,68 +308,104 @@ const EnfermeriaDashboard: React.FC = () => {
         <div className="px-4 py-2">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-red-900">Enfermería - Triaje</h1>
-              <p className="text-red-700">Evaluación y clasificación de pacientes</p>
+              <h1 className="text-xl font-bold text-red-900">Dashboard de Enfermería</h1>
+              <p className="text-red-700">Gestión de triajes y evaluación de pacientes</p>
+            </div>
+            
+            {/* Search and Filters */}
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Buscar pacientes..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent w-64"
+                />
+              </div>
+              
+              <select
+                value={filterPriority}
+                onChange={(e) => setFilterPriority(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              >
+                <option value="">Todas las prioridades</option>
+                <option value="alta">Alta</option>
+                <option value="media">Media</option>
+                <option value="baja">Baja</option>
+              </select>
+              
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              >
+                <option value="">Todos los estados</option>
+                <option value="pendiente">Pendiente</option>
+                <option value="en_proceso">En Proceso</option>
+                <option value="completado">Completado</option>
+              </select>
             </div>
           </div>
         </div>
       </div>
 
       <div className="p-3 flex-1 overflow-y-auto">
-        {/* Estadísticas */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-5 gap-2 mb-3">
           <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Triajes</p>
-                <p className="text-2xl font-bold text-gray-900">{estadisticas.total}</p>
+                <p className="text-2xl font-bold text-gray-900">{todayStats.total}</p>
               </div>
-              <Users className="w-8 h-8 text-blue-600" />
+              <Shield className="w-8 h-8 text-red-600" />
             </div>
           </div>
-
+          
           <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Pendientes</p>
-                <p className="text-2xl font-bold text-orange-600">{estadisticas.pendientes}</p>
+                <p className="text-2xl font-bold text-orange-600">{todayStats.pendientes}</p>
               </div>
               <Clock className="w-8 h-8 text-orange-600" />
             </div>
           </div>
-
+          
           <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">En Proceso</p>
-                <p className="text-2xl font-bold text-blue-600">{estadisticas.enProceso}</p>
+                <p className="text-2xl font-bold text-blue-600">{todayStats.enProceso}</p>
               </div>
               <Activity className="w-8 h-8 text-blue-600" />
             </div>
           </div>
-
+          
           <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Completados</p>
-                <p className="text-2xl font-bold text-green-600">{estadisticas.completados}</p>
+                <p className="text-2xl font-bold text-green-600">{todayStats.completados}</p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
           </div>
-
+          
           <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Prioridad Alta</p>
-                <p className="text-2xl font-bold text-red-600">{estadisticas.prioridadAlta}</p>
+                <p className="text-sm font-medium text-gray-600">Alta Prioridad</p>
+                <p className="text-2xl font-bold text-red-600">{todayStats.prioridadAlta}</p>
               </div>
               <AlertTriangle className="w-8 h-8 text-red-600" />
             </div>
           </div>
         </div>
 
-        {/* Lista de Triajes */}
+        {/* Tabs */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
           <div className="border-b border-gray-200">
             <nav className="flex space-x-8 px-6">
@@ -591,7 +417,7 @@ const EnfermeriaDashboard: React.FC = () => {
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Triajes del Día
+                Triajes del Día ({filteredTriages.length})
               </button>
               <button
                 onClick={() => setActiveTab('nuevo-triaje')}
@@ -617,88 +443,114 @@ const EnfermeriaDashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* Content */}
         {activeTab === 'triajes' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">Triajes del Día</h2>
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-gray-900">Triajes del Día</h2>
+              <div className="flex space-x-2">
                 <button
-                  onClick={generateTriagesPDF}
+                  onClick={generateTriageReport}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
                 >
-                  <Printer className="w-4 h-4" />
-                  <span>Imprimir Triajes</span>
+                  <Eye className="w-4 h-4" />
+                  <span>Generar Reporte</span>
+                </button>
+                <button
+                  onClick={() => setShowTriageModal(true)}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Nuevo Triaje</span>
                 </button>
               </div>
             </div>
             
             <div className="divide-y divide-gray-200">
-              {triajes.length > 0 ? triajes.map((triaje) => (
-                <div key={triaje._id} className="p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {triaje.pacienteId.nombre} {triaje.pacienteId.apellido}
-                        </h3>
-                        <span className="text-sm text-gray-500">
-                          ({calculateAge(triaje.pacienteId.fechaNacimiento)} años)
-                        </span>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getPrioridadColor(triaje.prioridad)}`}>
-                          {triaje.prioridad.toUpperCase()}
-                        </span>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(triaje.estado)}`}>
-                          {triaje.estado.replace('_', ' ').toUpperCase()}
-                        </span>
+              {filteredTriages.length > 0 ? filteredTriages.map((triage) => {
+                const patient = typeof triage.pacienteId === 'object' ? triage.pacienteId : patients.find(p => p._id === triage.pacienteId);
+                return (
+                  <div key={triage._id} className="p-6 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {patient?.nombre} {patient?.apellido}
+                          </h3>
+                          <span className="text-sm text-gray-500">
+                            ({patient ? calculateAge(patient.fechaNacimiento) : 'N/A'} años)
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getPrioridadColor(triage.prioridad)}`}>
+                            {triage.prioridad.toUpperCase()}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(triage.estado)}`}>
+                            {triage.estado.replace('_', ' ').toUpperCase()}
+                          </span>
+                        </div>
+                        
+                        <p className="text-gray-700 mb-4">{triage.sintomas}</p>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                          <div className="flex items-center space-x-2">
+                            <Heart className="w-4 h-4 text-red-500" />
+                            <span className="text-sm text-gray-600">PA: {triage.signosVitales.presionArterial}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Thermometer className="w-4 h-4 text-orange-500" />
+                            <span className="text-sm text-gray-600">T°: {triage.signosVitales.temperatura}°C</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Activity className="w-4 h-4 text-blue-500" />
+                            <span className="text-sm text-gray-600">FC: {triage.signosVitales.pulso} bpm</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Shield className="w-4 h-4 text-green-500" />
+                            <span className="text-sm text-gray-600">SpO2: {triage.signosVitales.saturacionOxigeno}%</span>
+                          </div>
+                        </div>
+                        
+                        {triage.observaciones && (
+                          <div className="mb-3 p-3 bg-yellow-50 rounded-lg">
+                            <p className="text-sm text-yellow-800">
+                              <span className="font-medium">Observaciones:</span> {triage.observaciones}
+                            </p>
+                          </div>
+                        )}
+                        
+                        <div className="text-sm text-gray-500">
+                          {new Date(triage.fechaHora).toLocaleString('es-ES')}
+                        </div>
                       </div>
                       
-                      <p className="text-gray-700 mb-4">{triaje.sintomas}</p>
-                      
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="flex items-center space-x-2">
-                          <Heart className="w-4 h-4 text-red-500" />
-                          <span className="text-sm text-gray-600">PA: {triaje.signosVitales.presionArterial}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Thermometer className="w-4 h-4 text-orange-500" />
-                          <span className="text-sm text-gray-600">T°: {triaje.signosVitales.temperatura}°C</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Activity className="w-4 h-4 text-blue-500" />
-                          <span className="text-sm text-gray-600">FC: {triaje.signosVitales.pulso} bpm</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Shield className="w-4 h-4 text-green-500" />
-                          <span className="text-sm text-gray-600">SpO2: {triaje.signosVitales.saturacionOxigeno}%</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-col items-end space-y-2">
-                      <span className="text-sm text-gray-500">
-                        {new Date(triaje.fechaHora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => generatePatientTriagePDF(triaje)}
-                          className="px-3 py-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm flex items-center space-x-1"
+                          onClick={() => generateSingleTriagePDF(triage)}
+                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                          title="Generar PDF"
                         >
-                          <Download className="w-3 h-3" />
-                          <span>PDF</span>
+                          <Eye className="w-4 h-4" />
                         </button>
-                        {/* Solo mostrar información del estado, no botón para cambiar */}
-                        <div className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm">
-                          {triaje.estado === 'pendiente' && 'Esperando Doctor'}
-                          {triaje.estado === 'en_proceso' && 'En Consulta'}
-                          {triaje.estado === 'completado' && 'Completado por Doctor'}
-                        </div>
+                        <button
+                          onClick={() => handleEditTriage(triage)}
+                          className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                          title="Editar triaje"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTriage(triage._id!)}
+                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                          title="Eliminar triaje"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   </div>
-                </div>
-              )) : (
+                );
+              }) : (
                 <div className="p-12 text-center text-gray-500">
-                  <Stethoscope className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <Shield className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No hay triajes registrados</h3>
                   <p className="text-gray-600">Los triajes del día aparecerán aquí</p>
                 </div>
@@ -713,453 +565,148 @@ const EnfermeriaDashboard: React.FC = () => {
               <h2 className="text-lg font-semibold text-gray-900">Nuevo Triaje</h2>
             </div>
             
-            <div className="p-6">
-              <div className="max-w-2xl mx-auto">
-                {/* Búsqueda de paciente */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Buscar Paciente por Cédula
-                  </label>
-                  <div className="flex space-x-3">
-                    <input
-                      type="text"
-                      placeholder="Ingrese número de cédula"
-                      value={searchCedula}
-                      onChange={(e) => setSearchCedula(e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                      onKeyPress={(e) => e.key === 'Enter' && searchPatientByCedula()}
-                    />
-                    <button
-                      onClick={searchPatientByCedula}
-                      className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
-                    >
-                      <Search className="w-4 h-4" />
-                      <span>Buscar</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Información del paciente encontrado */}
-                {selectedPatient && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                      <span className="text-sm font-medium text-green-800">Paciente encontrado</span>
-                    </div>
-                    <div className="text-sm text-green-700">
-                      <p className="font-medium">{selectedPatient.nombre} {selectedPatient.apellido}</p>
-                      <p>C.I: {selectedPatient.cedula}</p>
-                      <p>Edad: {calculateAge(selectedPatient.fechaNacimiento)} años</p>
-                      <p>Teléfono: {selectedPatient.telefono}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Formulario de triaje */}
-                {selectedPatient && (
-                  <form onSubmit={handleSubmitTriaje} className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Síntomas Principales *
-                      </label>
-                      <textarea
-                        required
-                        rows={3}
-                        value={nuevoTriaje.sintomas}
-                        onChange={(e) => handleInputChange('sintomas', e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                          validationErrors.sintomas ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder="Describa los síntomas principales del paciente"
-                      />
-                      {validationErrors.sintomas && (
-                        <p className="text-red-600 text-sm mt-1">{validationErrors.sintomas}</p>
-                      )}
-                    </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Presión Arterial *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="120/80"
-                          value={nuevoTriaje.presionArterial}
-                          onChange={(e) => handleInputChange('presionArterial', e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                            validationErrors.presionArterial ? 'border-red-300' : 'border-gray-300'
-                          }`}
-                        />
-                        {validationErrors.presionArterial && (
-                          <p className="text-red-600 text-sm mt-1">{validationErrors.presionArterial}</p>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Temperatura (°C) *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          required
-                          placeholder="36.5"
-                          value={nuevoTriaje.temperatura}
-                          onChange={(e) => handleInputChange('temperatura', e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                            validationErrors.temperatura ? 'border-red-300' : 'border-gray-300'
-                          }`}
-                        />
-                        {validationErrors.temperatura && (
-                          <p className="text-red-600 text-sm mt-1">{validationErrors.temperatura}</p>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Pulso (bpm) *
-                        </label>
-                        <input
-                          type="number"
-                          required
-                          placeholder="70"
-                          value={nuevoTriaje.pulso}
-                          onChange={(e) => handleInputChange('pulso', e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                            validationErrors.pulso ? 'border-red-300' : 'border-gray-300'
-                          }`}
-                        />
-                        {validationErrors.pulso && (
-                          <p className="text-red-600 text-sm mt-1">{validationErrors.pulso}</p>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Saturación O2 (%) *
-                        </label>
-                        <input
-                          type="number"
-                          required
-                          placeholder="98"
-                          value={nuevoTriaje.saturacionOxigeno}
-                          onChange={(e) => handleInputChange('saturacionOxigeno', e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                            validationErrors.saturacionOxigeno ? 'border-red-300' : 'border-gray-300'
-                          }`}
-                        />
-                        {validationErrors.saturacionOxigeno && (
-                          <p className="text-red-600 text-sm mt-1">{validationErrors.saturacionOxigeno}</p>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Freq. Respiratoria
-                        </label>
-                        <input
-                          type="number"
-                          placeholder="16"
-                          value={nuevoTriaje.frecuenciaRespiratoria}
-                          onChange={(e) => handleInputChange('frecuenciaRespiratoria', e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                            validationErrors.frecuenciaRespiratoria ? 'border-red-300' : 'border-gray-300'
-                          }`}
-                        />
-                        {validationErrors.frecuenciaRespiratoria && (
-                          <p className="text-red-600 text-sm mt-1">{validationErrors.frecuenciaRespiratoria}</p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Observaciones Adicionales
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={nuevoTriaje.observaciones}
-                        onChange={(e) => handleInputChange('observaciones', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                        placeholder="Observaciones adicionales sobre el estado del paciente"
-                      />
-                    </div>
-                    
-                    <div className="flex justify-end space-x-3 pt-4">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedPatient(null);
-                          setSearchCedula('');
-                          setNuevoTriaje({
-                            sintomas: '',
-                            presionArterial: '',
-                            temperatura: '',
-                            pulso: '',
-                            saturacionOxigeno: '',
-                            frecuenciaRespiratoria: '',
-                            observaciones: ''
-                          });
-                          setValidationErrors({});
-                        }}
-                        className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                      >
-                        Guardar Triaje
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                {!selectedPatient && (
-                  <div className="text-center py-12 text-gray-500">
-                    <User className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Buscar Paciente</h3>
-                    <p className="text-gray-600">Ingrese el número de cédula para buscar al paciente</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'estadisticas' && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">Estadísticas de Triaje</h2>
-                <button
-                  onClick={generateStatisticsPDF}
-                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  <span>Imprimir Estadísticas</span>
-                </button>
-              </div>
-            </div>
-            
-            <div className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Distribución por Prioridad */}
-                <div className="bg-gray-50 p-6 rounded-lg">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Distribución por Prioridad</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-                        <span className="text-sm text-gray-700">Prioridad Alta</span>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-32 bg-gray-200 rounded-full h-2">
-                          <div className="bg-red-500 h-2 rounded-full" style={{ width: `${estadisticas.total > 0 ? (estadisticas.prioridadAlta / estadisticas.total) * 100 : 0}%` }}></div>
-                        </div>
-                        <span className="text-sm font-medium text-gray-900">{estadisticas.prioridadAlta}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 bg-yellow-500 rounded-full"></div>
-                        <span className="text-sm text-gray-700">Prioridad Media</span>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-32 bg-gray-200 rounded-full h-2">
-                          <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${estadisticas.total > 0 ? (triajes.filter(t => t.prioridad === 'media').length / estadisticas.total) * 100 : 0}%` }}></div>
-                        </div>
-                        <span className="text-sm font-medium text-gray-900">
-                          {triajes.filter(t => t.prioridad === 'media').length}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-                        <span className="text-sm text-gray-700">Prioridad Baja</span>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-32 bg-gray-200 rounded-full h-2">
-                          <div className="bg-green-500 h-2 rounded-full" style={{ width: `${estadisticas.total > 0 ? (triajes.filter(t => t.prioridad === 'baja').length / estadisticas.total) * 100 : 0}%` }}></div>
-                        </div>
-                        <span className="text-sm font-medium text-gray-900">
-                          {triajes.filter(t => t.prioridad === 'baja').length}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Tiempo Promedio de Atención */}
-                <div className="bg-gray-50 p-6 rounded-lg">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Tiempo Promedio de Atención</h3>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-blue-600 mb-2">15 min</div>
-                    <div className="text-sm text-gray-600 mb-4">Tiempo promedio por triaje</div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Prioridad Alta</span>
-                        <span className="font-medium">8 min</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Prioridad Media</span>
-                        <span className="font-medium">15 min</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Prioridad Baja</span>
-                        <span className="font-medium">22 min</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Signos Vitales Promedio */}
-                <div className="bg-gray-50 p-6 rounded-lg">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Signos Vitales Promedio</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-red-600 mb-1">120/80</div>
-                      <div className="text-sm text-gray-600">Presión Arterial</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-orange-600 mb-1">36.8°C</div>
-                      <div className="text-sm text-gray-600">Temperatura</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600 mb-1">75 bpm</div>
-                      <div className="text-sm text-gray-600">Pulso</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600 mb-1">98%</div>
-                      <div className="text-sm text-gray-600">Saturación O2</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Tendencia Semanal */}
-                <div className="bg-gray-50 p-6 rounded-lg">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Tendencia Semanal</h3>
-                  <div className="space-y-3">
-                    {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((dia, index) => (
-                      <div key={dia} className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 w-8">{dia}</span>
-                        <div className="flex items-center space-x-3 flex-1 ml-4">
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-red-600 h-2 rounded-full" 
-                              style={{ width: `${Math.random() * 80 + 20}%` }}
-                            />
-                          </div>
-                          <span className="text-sm font-medium text-gray-900 w-8">
-                            {Math.floor(Math.random() * 20) + 5}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Modal Nuevo Triaje (mantener el existente para compatibilidad) */}
-      {mostrarFormulario && selectedPatient && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Nuevo Triaje</h2>
-              <p className="text-gray-600">
-                Paciente: {selectedPatient.nombre} {selectedPatient.apellido} - C.I: {selectedPatient.cedula}
-              </p>
-            </div>
-            
-            <form onSubmit={handleSubmitTriaje} className="p-6 space-y-6">
+            <form onSubmit={handleCreateTriage} className="p-6 space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Síntomas Principales
+                  Paciente *
+                </label>
+                <select
+                  required
+                  value={newTriage.pacienteId}
+                  onChange={(e) => setNewTriage({...newTriage, pacienteId: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  <option value="">Seleccionar paciente</option>
+                  {patients.filter(p => p.isActive).map(patient => (
+                    <option key={patient._id} value={patient._id}>
+                      {patient.nombre} {patient.apellido} - {patient.cedula}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Síntomas *
                 </label>
                 <textarea
                   required
-                  rows={3}
-                  value={nuevoTriaje.sintomas}
-                  onChange={(e) => handleInputChange('sintomas', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={4}
+                  value={newTriage.sintomas}
+                  onChange={(e) => setNewTriage({...newTriage, sintomas: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="Describa los síntomas del paciente"
                 />
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Presión Arterial
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="120/80"
-                    value={nuevoTriaje.presionArterial}
-                    onChange={(e) => handleInputChange('presionArterial', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Prioridad *
+                </label>
+                <select
+                  required
+                  value={newTriage.prioridad}
+                  onChange={(e) => setNewTriage({...newTriage, prioridad: e.target.value as 'alta' | 'media' | 'baja'})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  <option value="baja">Baja</option>
+                  <option value="media">Media</option>
+                  <option value="alta">Alta</option>
+                </select>
+              </div>
+              
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Signos Vitales</h3>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Temperatura (°C)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    required
-                    value={nuevoTriaje.temperatura}
-                    onChange={(e) => handleInputChange('temperatura', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Pulso (bpm)
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={nuevoTriaje.pulso}
-                    onChange={(e) => handleInputChange('pulso', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Saturación (%)
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={nuevoTriaje.saturacionOxigeno}
-                    onChange={(e) => handleInputChange('saturacionOxigeno', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Freq. Respiratoria
-                  </label>
-                  <input
-                    type="number"
-                    value={nuevoTriaje.frecuenciaRespiratoria}
-                    onChange={(e) => handleInputChange('frecuenciaRespiratoria', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Presión Arterial *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newTriage.signosVitales.presionArterial}
+                      onChange={(e) => setNewTriage({
+                        ...newTriage,
+                        signosVitales: { ...newTriage.signosVitales, presionArterial: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      placeholder="120/80"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Temperatura (°C) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="35"
+                      max="42"
+                      required
+                      value={newTriage.signosVitales.temperatura}
+                      onChange={(e) => setNewTriage({
+                        ...newTriage,
+                        signosVitales: { ...newTriage.signosVitales, temperatura: parseFloat(e.target.value) }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Pulso (bpm) *
+                    </label>
+                    <input
+                      type="number"
+                      min="40"
+                      max="200"
+                      required
+                      value={newTriage.signosVitales.pulso}
+                      onChange={(e) => setNewTriage({
+                        ...newTriage,
+                        signosVitales: { ...newTriage.signosVitales, pulso: parseInt(e.target.value) }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Saturación O2 (%) *
+                    </label>
+                    <input
+                      type="number"
+                      min="70"
+                      max="100"
+                      required
+                      value={newTriage.signosVitales.saturacionOxigeno}
+                      onChange={(e) => setNewTriage({
+                        ...newTriage,
+                        signosVitales: { ...newTriage.signosVitales, saturacionOxigeno: parseInt(e.target.value) }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Frecuencia Respiratoria (rpm)
+                    </label>
+                    <input
+                      type="number"
+                      min="10"
+                      max="40"
+                      value={newTriage.signosVitales.frecuenciaRespiratoria || ''}
+                      onChange={(e) => setNewTriage({
+                        ...newTriage,
+                        signosVitales: { ...newTriage.signosVitales, frecuenciaRespiratoria: e.target.value ? parseInt(e.target.value) : undefined }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
+                  </div>
                 </div>
               </div>
               
@@ -1169,9 +716,215 @@ const EnfermeriaDashboard: React.FC = () => {
                 </label>
                 <textarea
                   rows={3}
-                  value={nuevoTriaje.observaciones}
-                  onChange={(e) => handleInputChange('observaciones', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={newTriage.observaciones}
+                  onChange={(e) => setNewTriage({...newTriage, observaciones: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="Observaciones adicionales (opcional)"
+                />
+              </div>
+              
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Crear Triaje</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {activeTab === 'estadisticas' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Distribución por Prioridad</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-red-600 font-medium">Alta Prioridad</span>
+                  <span className="text-2xl font-bold text-red-600">{todayStats.prioridadAlta}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-yellow-600 font-medium">Media Prioridad</span>
+                  <span className="text-2xl font-bold text-yellow-600">
+                    {triages.filter(t => t.prioridad === 'media').length}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-green-600 font-medium">Baja Prioridad</span>
+                  <span className="text-2xl font-bold text-green-600">
+                    {triages.filter(t => t.prioridad === 'baja').length}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Estado de Triajes</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-orange-600 font-medium">Pendientes</span>
+                  <span className="text-2xl font-bold text-orange-600">{todayStats.pendientes}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-blue-600 font-medium">En Proceso</span>
+                  <span className="text-2xl font-bold text-blue-600">{todayStats.enProceso}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-green-600 font-medium">Completados</span>
+                  <span className="text-2xl font-bold text-green-600">{todayStats.completados}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Triage Modal */}
+      {showTriageModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Nuevo Triaje Rápido</h2>
+            </div>
+            
+            <form onSubmit={handleCreateTriage} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Paciente *
+                </label>
+                <select
+                  required
+                  value={newTriage.pacienteId}
+                  onChange={(e) => setNewTriage({...newTriage, pacienteId: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  <option value="">Seleccionar paciente</option>
+                  {patients.filter(p => p.isActive).map(patient => (
+                    <option key={patient._id} value={patient._id}>
+                      {patient.nombre} {patient.apellido} - {patient.cedula}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Síntomas *
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={newTriage.sintomas}
+                  onChange={(e) => setNewTriage({...newTriage, sintomas: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Prioridad *
+                  </label>
+                  <select
+                    required
+                    value={newTriage.prioridad}
+                    onChange={(e) => setNewTriage({...newTriage, prioridad: e.target.value as 'alta' | 'media' | 'baja'})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  >
+                    <option value="baja">Baja</option>
+                    <option value="media">Media</option>
+                    <option value="alta">Alta</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Presión Arterial *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newTriage.signosVitales.presionArterial}
+                    onChange={(e) => setNewTriage({
+                      ...newTriage,
+                      signosVitales: { ...newTriage.signosVitales, presionArterial: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="120/80"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowTriageModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Crear Triaje
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && selectedTriage && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Editar Triaje</h2>
+            </div>
+            
+            <form onSubmit={handleUpdateTriage} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Estado
+                </label>
+                <select
+                  value={selectedTriage.estado}
+                  onChange={(e) => setSelectedTriage({...selectedTriage, estado: e.target.value as 'pendiente' | 'en_proceso' | 'completado'})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  <option value="pendiente">Pendiente</option>
+                  <option value="en_proceso">En Proceso</option>
+                  <option value="completado">Completado</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Prioridad
+                </label>
+                <select
+                  value={selectedTriage.prioridad}
+                  onChange={(e) => setSelectedTriage({...selectedTriage, prioridad: e.target.value as 'alta' | 'media' | 'baja'})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  <option value="baja">Baja</option>
+                  <option value="media">Media</option>
+                  <option value="alta">Alta</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Observaciones
+                </label>
+                <textarea
+                  rows={3}
+                  value={selectedTriage.observaciones || ''}
+                  onChange={(e) => setSelectedTriage({...selectedTriage, observaciones: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
               </div>
               
@@ -1179,9 +932,8 @@ const EnfermeriaDashboard: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setMostrarFormulario(false);
-                    setSelectedPatient(null);
-                    setSearchCedula('');
+                    setShowEditModal(false);
+                    setSelectedTriage(null);
                   }}
                   className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                 >
@@ -1189,9 +941,9 @@ const EnfermeriaDashboard: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                 >
-                  Guardar Triaje
+                  Actualizar
                 </button>
               </div>
             </form>

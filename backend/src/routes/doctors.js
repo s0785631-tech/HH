@@ -228,4 +228,28 @@ router.get('/:id/horarios/:fecha', authMiddleware, async (req, res) => {
   }
 });
 
+// Delete doctor (soft delete)
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'empresa') {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
+
+    const doctor = await Doctor.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
+    
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor no encontrado' });
+    }
+    
+    res.json({ message: 'Doctor eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error deleting doctor:', error);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
 module.exports = router;

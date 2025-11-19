@@ -71,4 +71,20 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Delete triage
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const triage = await Triage.findByIdAndDelete(req.params.id);
+    
+    if (!triage) {
+      return res.status(404).json({ message: 'Triaje no encontrado' });
+    }
+    
+    res.json({ message: 'Triaje eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error deleting triage:', error);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
 module.exports = router;

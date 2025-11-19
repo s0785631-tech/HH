@@ -61,6 +61,7 @@ export const patientsAPI = {
   search: (query: string) => api.get(`/patients/search/${query}`),
   create: (data: any) => api.post('/patients', data),
   update: (id: string, data: any) => api.put(`/patients/${id}`, data),
+  delete: (id: string) => api.delete(`/patients/${id}`),
 };
 
 export const appointmentsAPI = {
@@ -68,6 +69,7 @@ export const appointmentsAPI = {
   getById: (id: string) => api.get(`/appointments/${id}`),
   create: (data: any) => api.post('/appointments', data),
   update: (id: string, data: any) => api.put(`/appointments/${id}`, data),
+  delete: (id: string) => api.delete(`/appointments/${id}`),
 };
 
 export const triageAPI = {
@@ -75,6 +77,7 @@ export const triageAPI = {
   getById: (id: string) => api.get(`/triage/${id}`),
   create: (data: any) => api.post('/triage', data),
   update: (id: string, data: any) => api.put(`/triage/${id}`, data),
+  delete: (id: string) => api.delete(`/triage/${id}`),
 };
 
 export const consultationsAPI = {
@@ -82,6 +85,7 @@ export const consultationsAPI = {
   getPendingTriages: () => api.get('/consultations/pending-triages'),
   create: (data: any) => api.post('/consultations', data),
   update: (id: string, data: any) => api.put(`/consultations/${id}`, data),
+  delete: (id: string) => api.delete(`/consultations/${id}`),
 };
 
 export const dashboardAPI = {
@@ -96,6 +100,7 @@ export const doctorsAPI = {
   getSchedule: (id: string, fecha: string) => api.get(`/doctors/${id}/horarios/${fecha}`),
   create: (data: any) => api.post('/doctors', data),
   update: (id: string, data: any) => api.put(`/doctors/${id}`, data),
+  delete: (id: string) => api.delete(`/doctors/${id}`),
 };
 
 export const patientAssignmentsAPI = {

@@ -77,4 +77,24 @@ router.get('/search/:query', authMiddleware, async (req, res) => {
   }
 });
 
+// Delete patient
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const patient = await Patient.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
+    
+    if (!patient) {
+      return res.status(404).json({ message: 'Paciente no encontrado' });
+    }
+    
+    res.json({ message: 'Paciente eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error deleting patient:', error);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
 module.exports = router;

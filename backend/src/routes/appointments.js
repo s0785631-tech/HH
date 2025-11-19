@@ -7,7 +7,7 @@ const router = express.Router();
 // Get appointments
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { fecha, estado, pacienteId } = req.query;
+    const { fecha, estado, pacienteId, medicoId } = req.query;
     let filter = {};
 
     if (fecha) {
@@ -25,27 +25,19 @@ router.get('/', authMiddleware, async (req, res) => {
       filter.pacienteId = pacienteId;
     }
 
+    if (medicoId) {
+      filter.medicoId = medicoId;
+    }
+
     const appointments = await Appointment.find(filter)
       .populate('pacienteId', 'nombre apellido cedula telefono')
       .populate({
         path: 'medicoId',
-        populate: {
-          path: 'userId',
-          select: 'name'
-        }
+        select: 'name'
       })
       .sort({ fecha: 1, hora: 1 });
 
-    // Transform the response to match expected format
-    const transformedAppointments = appointments.map(appointment => ({
-      ...appointment.toObject(),
-      medicoId: {
-        _id: appointment.medicoId._id,
-        name: appointment.medicoId.userId ? appointment.medicoId.userId.name : `Dr. ${appointment.medicoId.nombre} ${appointment.medicoId.apellido}`
-      }
-    }));
-
-    res.json(transformedAppointments);
+    res.json(appointments);
   } catch (error) {
     console.error('Error fetching appointments:', error);
     res.status(500).json({ message: 'Error del servidor' });
@@ -55,16 +47,8 @@ router.get('/', authMiddleware, async (req, res) => {
 // Create appointment
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    // Find the doctor to get the userId
-    const Doctor = require('../models/Doctor');
-    const doctor = await Doctor.findById(req.body.medicoId);
-    if (!doctor) {
-      return res.status(404).json({ message: 'Doctor no encontrado' });
-    }
-
     const appointment = new Appointment({
       ...req.body,
-      medicoId: doctor.userId, // Use the doctor's userId for the appointment
       createdBy: req.user.userId
     });
     await appointment.save();
@@ -96,6 +80,22 @@ router.put('/:id', authMiddleware, async (req, res) => {
     
     res.json(appointment);
   } catch (error) {
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
+// Delete appointment
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const appointment = await Appointment.findByIdAndDelete(req.params.id);
+    
+    if (!appointment) {
+      return res.status(404).json({ message: 'Cita no encontrada' });
+    }
+    
+    res.json({ message: 'Cita eliminada exitosamente' });
+  } catch (error) {
+    console.error('Error deleting appointment:', error);
     res.status(500).json({ message: 'Error del servidor' });
   }
 });
