@@ -14,8 +14,15 @@ router.get('/', authMiddleware, async (req, res) => {
       .populate('userId', 'email name')
       .sort({ apellido: 1, nombre: 1 });
     
-    console.log(`Found ${doctors.length} doctors`);
-    res.json(doctors);
+    // Agregar información completa del doctor para el frontend
+    const doctorsWithFullInfo = doctors.map(doctor => ({
+      ...doctor.toObject(),
+      displayName: `Dr. ${doctor.nombre} ${doctor.apellido}`,
+      fullInfo: `Dr. ${doctor.nombre} ${doctor.apellido} - ${doctor.especialidad}`
+    }));
+    
+    console.log(`Found ${doctorsWithFullInfo.length} doctors`);
+    res.json(doctorsWithFullInfo);
   } catch (error) {
     console.error('Error fetching doctors:', error);
     res.status(500).json({ message: 'Error del servidor' });

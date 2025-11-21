@@ -9,11 +9,14 @@ const router = express.Router();
 // Validar horario del doctor
 const validateDoctorSchedule = async (doctorId, fecha, hora) => {
   try {
-    const doctor = await Doctor.findOne({ userId: doctorId });
+    // Buscar doctor por userId (que es lo que recibimos como medicoId)
+    const doctor = await Doctor.findOne({ userId: doctorId, isActive: true });
     if (!doctor) {
-      return { valid: false, message: 'Doctor no encontrado' };
+      return { valid: false, message: 'Doctor no encontrado o inactivo' };
     }
 
+    console.log('Validating schedule for doctor:', doctor.nombre, doctor.apellido);
+    
     const fechaObj = new Date(fecha);
     const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     const diaSemana = diasSemana[fechaObj.getDay()];
@@ -21,7 +24,7 @@ const validateDoctorSchedule = async (doctorId, fecha, hora) => {
     const horarioDelDia = doctor.horarios.find(h => h.dia === diaSemana && h.activo);
     
     if (!horarioDelDia) {
-      return { valid: false, message: 'Doctor no disponible este día' };
+      return { valid: false, message: `Dr. ${doctor.nombre} ${doctor.apellido} no está disponible los ${diaSemana}s` };
     }
 
     // Verificar si la hora está dentro del horario
@@ -29,7 +32,7 @@ const validateDoctorSchedule = async (doctorId, fecha, hora) => {
     const horaFin = horarioDelDia.horaFin;
     
     if (hora < horaInicio || hora > horaFin) {
-      return { valid: false, message: `Doctor disponible de ${horaInicio} a ${horaFin}` };
+      return { valid: false, message: `Dr. ${doctor.nombre} ${doctor.apellido} está disponible de ${horaInicio} a ${horaFin}` };
     }
 
     // Verificar si ya tiene cita a esa hora
@@ -44,7 +47,7 @@ const validateDoctorSchedule = async (doctorId, fecha, hora) => {
     });
 
     if (citaExistente) {
-      return { valid: false, message: 'Doctor ya tiene cita programada a esa hora' };
+      return { valid: false, message: `Dr. ${doctor.nombre} ${doctor.apellido} ya tiene una cita programada a las ${hora}` };
     }
 
     return { valid: true, doctor };
@@ -165,7 +168,19 @@ router.post('/', authMiddleware, async (req, res) => {
     console.log('Creating appointment with data:', req.body);
     console.log('User from token:', req.user);
     
-    const { pacienteId, medicoId, fecha, hora } = req.body;
+    const { pacienteId, medicoId, fecha, hora, motivo, notas } = req.body;
+    
+    // Validar que se proporcione el medicoId
+    if (!medicoId) {
+      return res.status(400).json({ message: 'Debe seleccionar un médico' });
+    }
+    
+    // Verificar que el médico existe y está activo
+    const Doctor = require('../models/Doctor');
+    const doctor = await Doctor.findOne({ userId: medicoId, isActive: true });
+    if (!doctor) {
+      return res.status(400).json({ message: 'Médico no encontrado o inactivo' });
+    }
     
     // Validar horario del doctor
     const scheduleValidation = await validateDoctorSchedule(medicoId, fecha, hora);
@@ -190,7 +205,12 @@ router.post('/', authMiddleware, async (req, res) => {
     }
     
     const appointment = new Appointment({
-      ...req.body,
+      pacienteId,
+      medicoId, // Este es el userId del doctor, no el doctorId
+      fecha,
+      hora,
+      motivo,
+      notas,
       createdBy: req.user.userId,
       copago: copago,
       pagoCopago: pagoCopago
@@ -201,10 +221,7 @@ router.post('/', authMiddleware, async (req, res) => {
     
     const populatedAppointment = await Appointment.findById(appointment._id)
       .populate('pacienteId', 'nombre apellido cedula telefono tipoAfiliacion')
-      .populate({
-        path: 'medicoId',
-        select: 'name email'
-      });
+      .populate('medicoId', 'name email');
     
     console.log('Populated appointment:', populatedAppointment);
     res.status(201).json(populatedAppointment);
