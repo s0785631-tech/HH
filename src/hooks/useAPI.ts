@@ -6,6 +6,9 @@ import {
   consultationsAPI,
   dashboardAPI,
   doctorsAPI,
+  patientAssignmentsAPI,
+  especialidadesAPI,
+  consultoriosAPI,
 } from '../services/api';
 
 export const useAPI = () => {

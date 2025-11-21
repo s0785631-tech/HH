@@ -1,9 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-
 import { automation } from '../../services/automationService';
-import { Users, Calendar, Clock, UserPlus, CalendarPlus, Search, CreditCard as Edit, Trash2, Eye, Phone, Mail, MapPin, User, CheckCircle, XCircle, AlertTriangle, Stethoscope } from 'lucide-react';
+import { 
+  Users, 
+  Calendar, 
+  Clock, 
+  Plus, 
+  Search, 
+  Edit, 
+  Trash2, 
+  Eye,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  FileText,
+  Stethoscope
+} from 'lucide-react';
 import { useAPI } from '../../hooks/useAPI';
 import ErrorModal from '../ErrorModal';
 import SuccessToast from '../SuccessToast';
@@ -25,8 +40,6 @@ interface Patient {
     telefono: string;
     relacion: string;
   };
-  isActive: boolean;
-  createdAt: string;
 }
 
 interface Doctor {
@@ -34,22 +47,28 @@ interface Doctor {
   userId: string;
   nombre: string;
   apellido: string;
+  cedula: string;
   especialidad: string;
   numeroLicencia: string;
+  telefono: string;
+  email: string;
   consultorio: {
     numero: string;
     nombre: string;
   };
+  horarios: {
+    dia: string;
+    horaInicio: string;
+    horaFin: string;
+    activo: boolean;
+  }[];
   isActive: boolean;
 }
 
 interface Appointment {
-  _id: string;
-  pacienteId: Patient;
-  medicoId: {
-    _id: string;
-    name: string;
-  };
+  _id?: string;
+  pacienteId: string | Patient;
+  medicoId: string;
   fecha: string;
   hora: string;
   motivo: string;
@@ -57,22 +76,21 @@ interface Appointment {
   notas?: string;
   copago?: number;
   pagoCopago?: boolean;
-  createdAt: string;
 }
 
 const RecepcionDashboard: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'pacientes' | 'citas' | 'nueva-cita'>('pacientes');
+  const [activeTab, setActiveTab] = useState<'pacientes' | 'citas' | 'nuevo-paciente' | 'nueva-cita'>('pacientes');
   
   // Estados para modales
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [editType, setEditType] = useState<'patient' | 'appointment'>('patient');
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   
   // Estados para notificaciones
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -82,15 +100,19 @@ const RecepcionDashboard: React.FC = () => {
   
   // Estados para búsqueda
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchCedula, setSearchCedula] = useState('');
-  const [selectedPatientForAppointment, setSelectedPatientForAppointment] = useState<Patient | null>(null);
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
-  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
 
+  // Estados para horarios de doctores
+  const [selectedDoctorId, setSelectedDoctorId] = useState('');
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [availableHours, setAvailableHours] = useState<string[]>([]);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [doctorSchedule, setDoctorSchedule] = useState<any>(null);
+
   // Estados para formularios
-  const [newPatient, setNewPatient] = useState<Partial<Patient>>({
+  const [newPatient, setNewPatient] = useState<Patient>({
+    _id: '',
     nombre: '',
     apellido: '',
     cedula: '',
@@ -108,12 +130,13 @@ const RecepcionDashboard: React.FC = () => {
     }
   });
 
-  const [newAppointment, setNewAppointment] = useState({
+  const [newAppointment, setNewAppointment] = useState<Appointment>({
     pacienteId: '',
     medicoId: '',
     fecha: '',
     hora: '',
     motivo: '',
+    estado: 'programada',
     notas: '',
     copago: 0,
     pagoCopago: false
@@ -129,14 +152,13 @@ const RecepcionDashboard: React.FC = () => {
       const { action } = event.detail;
       switch (action) {
         case 'nuevo-paciente':
-          setActiveTab('pacientes');
-          setShowPatientModal(true);
-          break;
-        case 'nueva-cita':
-          setActiveTab('nueva-cita');
+          setActiveTab('nuevo-paciente');
           break;
         case 'buscar-pacientes':
           setActiveTab('pacientes');
+          break;
+        case 'nueva-cita':
+          setActiveTab('nueva-cita');
           break;
         case 'gestionar-citas':
           setActiveTab('citas');
@@ -153,106 +175,60 @@ const RecepcionDashboard: React.FC = () => {
     const filtered = patients.filter(patient =>
       patient.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       patient.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.cedula.includes(searchTerm)
+      patient.cedula.includes(searchTerm) ||
+      patient.telefono.includes(searchTerm)
     );
     setFilteredPatients(filtered);
+  }, [searchTerm, patients]);
 
+  useEffect(() => {
     // Filtrar citas
-    const filteredAppts = appointments.filter(appointment =>
-      appointment.pacienteId.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      appointment.pacienteId.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      appointment.pacienteId.cedula.includes(searchTerm) ||
-      appointment.medicoId.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredAppointments(filteredAppts);
-  }, [searchTerm, patients, appointments]);
-
-  // Buscar paciente por cédula
-  const searchPatientByCedula = async () => {
-    if (!searchCedula.trim()) return;
-    
-    try {
-      const foundPatient = patients.find(p => p.cedula === searchCedula.trim());
-      if (foundPatient) {
-        setSelectedPatientForAppointment(foundPatient);
-        setNewAppointment({
-          ...newAppointment,
-          pacienteId: foundPatient._id,
-          copago: foundPatient.tipoAfiliacion === 'contributivo' ? 15000 : 0
-        });
-      } else {
-        setErrorMessage('Paciente no encontrado con esa cédula');
-        setShowErrorModal(true);
-      }
-    } catch (error) {
-      setErrorMessage('Error al buscar paciente');
-      setShowErrorModal(true);
-    }
-  };
-
-  // Obtener fechas disponibles del doctor
-  const getAvailableDates = async (doctorId: string) => {
-    if (!doctorId) return;
-    
-    try {
-      // Generar próximos 30 días
-      const dates = [];
-      const today = new Date();
+    const filtered = appointments.filter(appointment => {
+      const patient = typeof appointment.pacienteId === 'object' ? appointment.pacienteId : null;
+      if (!patient) return false;
       
-      for (let i = 1; i <= 30; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
-        
-        // Excluir domingos (día 0)
-        if (date.getDay() !== 0) {
-          dates.push(date.toISOString().split('T')[0]);
-        }
-      }
-      
-      setAvailableDates(dates);
-    } catch (error) {
-      console.error('Error getting available dates:', error);
-    }
-  };
-
-  // Obtener horarios disponibles para una fecha específica
-  const getAvailableTimes = async (doctorId: string, fecha: string) => {
-    if (!doctorId || !fecha) return;
-    
-    try {
-      // Horarios estándar (8:00 AM - 5:00 PM)
-      const standardTimes = [
-        '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
-        '11:00', '11:30', '14:00', '14:30', '15:00', '15:30',
-        '16:00', '16:30', '17:00'
-      ];
-      
-      // Obtener citas existentes para esa fecha
-      const existingAppointments = appointments.filter(apt => 
-        apt.medicoId._id === doctorId && apt.fecha === fecha
+      return (
+        patient.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        patient.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        patient.cedula.includes(searchTerm) ||
+        appointment.motivo.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      
-      const occupiedTimes = existingAppointments.map(apt => apt.hora);
-      const availableTimes = standardTimes.filter(time => !occupiedTimes.includes(time));
-      
-      setAvailableTimes(availableTimes);
-    } catch (error) {
-      console.error('Error getting available times:', error);
+    });
+    setFilteredAppointments(filtered);
+  }, [searchTerm, appointments]);
+
+  // Efecto para cargar fechas disponibles cuando se selecciona un doctor
+  useEffect(() => {
+    if (selectedDoctorId) {
+      loadAvailableDates();
+    } else {
+      setAvailableDates([]);
+      setAvailableHours([]);
+      setSelectedDate('');
     }
-  };
+  }, [selectedDoctorId]);
+
+  // Efecto para cargar horas disponibles cuando se selecciona una fecha
+  useEffect(() => {
+    if (selectedDoctorId && selectedDate) {
+      loadAvailableHours();
+    } else {
+      setAvailableHours([]);
+    }
+  }, [selectedDoctorId, selectedDate]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [patientsData, appointmentsData, doctorsData] = await Promise.all([
+      const [patientsData, doctorsData, appointmentsData] = await Promise.all([
         api.patients.getAll(),
-        api.appointments.getAll(),
-        api.doctors.getAll()
+        api.doctors.getAll(),
+        api.appointments.getAll()
       ]);
       
       setPatients(patientsData || []);
-      setAppointments(appointmentsData || []);
       setDoctors(doctorsData || []);
+      setAppointments(appointmentsData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
       setErrorMessage('Error al cargar los datos');
@@ -262,12 +238,105 @@ const RecepcionDashboard: React.FC = () => {
     }
   };
 
+  const loadAvailableDates = () => {
+    const selectedDoctor = doctors.find(d => d._id === selectedDoctorId);
+    if (!selectedDoctor) return;
+
+    const dates: string[] = [];
+    const today = new Date();
+    
+    // Generar fechas para los próximos 30 días
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      
+      const dayName = getDayName(date.getDay());
+      const doctorSchedule = selectedDoctor.horarios.find(h => 
+        h.dia === dayName && h.activo
+      );
+      
+      // Solo agregar fechas donde el doctor tiene horario
+      if (doctorSchedule) {
+        dates.push(date.toISOString().split('T')[0]);
+      }
+    }
+    
+    setAvailableDates(dates);
+  };
+
+  const loadAvailableHours = async () => {
+    if (!selectedDoctorId || !selectedDate) return;
+
+    try {
+      // Obtener el horario del doctor para la fecha seleccionada
+      const response = await api.doctors.getSchedule(selectedDoctorId, selectedDate);
+      setDoctorSchedule(response);
+      
+      if (response.disponible) {
+        const hours = generateTimeSlots(
+          response.horario.horaInicio,
+          response.horario.horaFin,
+          response.horasOcupadas || []
+        );
+        setAvailableHours(hours);
+      } else {
+        setAvailableHours([]);
+      }
+    } catch (error) {
+      console.error('Error loading doctor schedule:', error);
+      // Fallback: generar horarios básicos si no hay respuesta del servidor
+      const selectedDoctor = doctors.find(d => d._id === selectedDoctorId);
+      if (selectedDoctor) {
+        const date = new Date(selectedDate);
+        const dayName = getDayName(date.getDay());
+        const schedule = selectedDoctor.horarios.find(h => 
+          h.dia === dayName && h.activo
+        );
+        
+        if (schedule) {
+          const hours = generateTimeSlots(schedule.horaInicio, schedule.horaFin, []);
+          setAvailableHours(hours);
+        }
+      }
+    }
+  };
+
+  const getDayName = (dayIndex: number): string => {
+    const days = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+    return days[dayIndex];
+  };
+
+  const generateTimeSlots = (startTime: string, endTime: string, occupiedHours: string[]): string[] => {
+    const slots: string[] = [];
+    const start = new Date(`2000-01-01T${startTime}`);
+    const end = new Date(`2000-01-01T${endTime}`);
+    
+    const current = new Date(start);
+    
+    while (current < end) {
+      const timeString = current.toTimeString().slice(0, 5);
+      
+      // Solo agregar si no está ocupada
+      if (!occupiedHours.includes(timeString)) {
+        slots.push(timeString);
+      }
+      
+      // Incrementar en intervalos de 30 minutos
+      current.setMinutes(current.getMinutes() + 30);
+    }
+    
+    return slots;
+  };
+
   const handleCreatePatient = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     try {
       await api.patients.create(newPatient);
-      setShowPatientModal(false);
+      
+      fetchData();
       setNewPatient({
+        _id: '',
         nombre: '',
         apellido: '',
         cedula: '',
@@ -284,9 +353,10 @@ const RecepcionDashboard: React.FC = () => {
           relacion: ''
         }
       });
-      fetchData();
+      
       setSuccessMessage('¡Paciente creado exitosamente!');
       setShowSuccessToast(true);
+      setActiveTab('pacientes');
     } catch (error) {
       setErrorMessage('Error al crear el paciente');
       setShowErrorModal(true);
@@ -295,75 +365,103 @@ const RecepcionDashboard: React.FC = () => {
 
   const handleCreateAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!selectedDoctorId || !selectedDate || !newAppointment.hora) {
+      setErrorMessage('Por favor seleccione doctor, fecha y hora');
+      setShowErrorModal(true);
+      return;
+    }
+    
     try {
-      // Crear la cita con los datos correctos
       const appointmentData = {
         ...newAppointment,
-        createdBy: JSON.parse(localStorage.getItem('user') || '{}').id
+        medicoId: selectedDoctorId,
+        fecha: selectedDate
       };
       
       await api.appointments.create(appointmentData);
+      
+      fetchData();
       setNewAppointment({
         pacienteId: '',
         medicoId: '',
         fecha: '',
         hora: '',
         motivo: '',
+        estado: 'programada',
         notas: '',
         copago: 0,
         pagoCopago: false
       });
-      fetchData();
+      setSelectedDoctorId('');
+      setSelectedDate('');
+      setAvailableHours([]);
+      setAvailableDates([]);
+      
       setSuccessMessage('¡Cita creada exitosamente!');
       setShowSuccessToast(true);
+      setActiveTab('citas');
       
       // Disparar evento de automatización
-      automation.scheduleReminder(appointmentData.pacienteId, new Date(appointmentData.fecha));
+      automation.onPatientAssigned({
+        pacienteId: appointmentData.pacienteId,
+        medicoId: appointmentData.medicoId,
+        motivoConsulta: appointmentData.motivo
+      });
     } catch (error) {
       setErrorMessage('Error al crear la cita');
       setShowErrorModal(true);
     }
   };
 
-  const handleEdit = (item: any, type: 'patient' | 'appointment') => {
-    setSelectedItem(item);
-    setEditType(type);
+  const handleEditPatient = (patient: Patient) => {
+    setSelectedPatient(patient);
     setShowEditModal(true);
   };
 
-  const handleUpdate = async (e: React.FormEvent) => {
+  const handleUpdatePatient = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!selectedPatient) return;
+    
     try {
-      if (editType === 'patient') {
-        await api.patients.update(selectedItem._id, selectedItem);
-      } else {
-        await api.appointments.update(selectedItem._id, selectedItem);
-      }
-      setShowEditModal(false);
-      setSelectedItem(null);
+      await api.patients.update(selectedPatient._id, selectedPatient);
+      
       fetchData();
-      setSuccessMessage('¡Actualizado exitosamente!');
+      setShowEditModal(false);
+      setSelectedPatient(null);
+      setSuccessMessage('¡Paciente actualizado exitosamente!');
       setShowSuccessToast(true);
     } catch (error) {
-      setErrorMessage('Error al actualizar');
+      setErrorMessage('Error al actualizar el paciente');
       setShowErrorModal(true);
     }
   };
 
-  const handleDelete = async (id: string, type: 'patient' | 'appointment') => {
-    if (!confirm('¿Está seguro de que desea eliminar este elemento?')) return;
+  const handleDeletePatient = async (id: string) => {
+    if (!confirm('¿Está seguro de que desea eliminar este paciente?')) return;
     
     try {
-      if (type === 'patient') {
-        await api.patients.delete(id);
-      } else {
-        await api.appointments.delete(id);
-      }
+      await api.patients.delete(id);
       fetchData();
-      setSuccessMessage('¡Eliminado exitosamente!');
+      setSuccessMessage('¡Paciente eliminado exitosamente!');
       setShowSuccessToast(true);
     } catch (error) {
-      setErrorMessage('Error al eliminar');
+      setErrorMessage('Error al eliminar el paciente');
+      setShowErrorModal(true);
+    }
+  };
+
+  const handleDeleteAppointment = async (id: string) => {
+    if (!confirm('¿Está seguro de que desea eliminar esta cita?')) return;
+    
+    try {
+      await api.appointments.delete(id);
+      fetchData();
+      setSuccessMessage('¡Cita eliminada exitosamente!');
+      setShowSuccessToast(true);
+    } catch (error) {
+      setErrorMessage('Error al eliminar la cita');
       setShowErrorModal(true);
     }
   };
@@ -393,12 +491,12 @@ const RecepcionDashboard: React.FC = () => {
 
   const todayStats = {
     totalPatients: patients.length,
-    activePatients: patients.filter(p => p.isActive).length,
     todayAppointments: appointments.filter(a => {
       const today = new Date().toISOString().split('T')[0];
       return a.fecha === today;
     }).length,
-    pendingAppointments: appointments.filter(a => a.estado === 'programada').length
+    pendingAppointments: appointments.filter(a => a.estado === 'programada').length,
+    completedAppointments: appointments.filter(a => a.estado === 'completada').length
   };
 
   if (loading) {
@@ -454,16 +552,6 @@ const RecepcionDashboard: React.FC = () => {
           <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Pacientes Activos</p>
-                <p className="text-2xl font-bold text-green-600">{todayStats.activePatients}</p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-green-600" />
-            </div>
-          </div>
-          
-          <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
                 <p className="text-sm font-medium text-gray-600">Citas Hoy</p>
                 <p className="text-2xl font-bold text-blue-600">{todayStats.todayAppointments}</p>
               </div>
@@ -474,10 +562,20 @@ const RecepcionDashboard: React.FC = () => {
           <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Citas Pendientes</p>
+                <p className="text-sm font-medium text-gray-600">Pendientes</p>
                 <p className="text-2xl font-bold text-orange-600">{todayStats.pendingAppointments}</p>
               </div>
               <Clock className="w-8 h-8 text-orange-600" />
+            </div>
+          </div>
+          
+          <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Completadas</p>
+                <p className="text-2xl font-bold text-green-600">{todayStats.completedAppointments}</p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
           </div>
         </div>
@@ -494,7 +592,7 @@ const RecepcionDashboard: React.FC = () => {
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Pacientes ({filteredPatients.length})
+                Pacientes ({patients.length})
               </button>
               <button
                 onClick={() => setActiveTab('citas')}
@@ -504,7 +602,17 @@ const RecepcionDashboard: React.FC = () => {
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Citas ({filteredAppointments.length})
+                Citas ({appointments.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('nuevo-paciente')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'nuevo-paciente'
+                    ? 'border-green-500 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Nuevo Paciente
               </button>
               <button
                 onClick={() => setActiveTab('nueva-cita')}
@@ -523,15 +631,8 @@ const RecepcionDashboard: React.FC = () => {
         {/* Content */}
         {activeTab === 'pacientes' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-900">Gestión de Pacientes</h2>
-              <button
-                onClick={() => setShowPatientModal(true)}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>Nuevo Paciente</span>
-              </button>
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Lista de Pacientes</h2>
             </div>
             
             <div className="divide-y divide-gray-200">
@@ -547,13 +648,15 @@ const RecepcionDashboard: React.FC = () => {
                           ({calculateAge(patient.fechaNacimiento)} años)
                         </span>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          patient.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          patient.tipoAfiliacion === 'contributivo' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-green-100 text-green-800'
                         }`}>
-                          {patient.isActive ? 'ACTIVO' : 'INACTIVO'}
+                          {patient.tipoAfiliacion.toUpperCase()}
                         </span>
                       </div>
                       
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
                         <div className="flex items-center space-x-2">
                           <User className="w-4 h-4" />
                           <span>C.I: {patient.cedula}</span>
@@ -563,52 +666,35 @@ const RecepcionDashboard: React.FC = () => {
                           <span>{patient.telefono}</span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className="font-medium">Género:</span>
-                          <span>{patient.genero === 'M' ? 'Masculino' : 'Femenino'}</span>
+                          <Mail className="w-4 h-4" />
+                          <span>{patient.email || 'No registrado'}</span>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium">Afiliación:</span>
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            patient.tipoAfiliacion === 'contributivo' 
-                              ? 'bg-blue-100 text-blue-800' 
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {patient.tipoAfiliacion.toUpperCase()}
-                          </span>
-                        </div>
-                        {patient.eps && (
-                          <div className="flex items-center space-x-2">
-                            <span className="font-medium">EPS:</span>
-                            <span>{patient.eps}</span>
-                          </div>
-                        )}
-                        {patient.email && (
-                          <div className="flex items-center space-x-2">
-                            <Mail className="w-4 h-4" />
-                            <span>{patient.email}</span>
-                          </div>
-                        )}
                         <div className="flex items-center space-x-2">
                           <MapPin className="w-4 h-4" />
-                          <span>{patient.direccion}</span>
+                          <span>{patient.genero === 'M' ? 'Masculino' : 'Femenino'}</span>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium">Emergencia:</span>
-                          <span>{patient.contactoEmergencia.nombre} ({patient.contactoEmergencia.telefono})</span>
-                        </div>
+                      </div>
+                      
+                      <div className="mt-3 text-sm text-gray-600">
+                        <span className="font-medium">Dirección:</span> {patient.direccion}
+                      </div>
+                      
+                      <div className="mt-2 text-sm text-gray-600">
+                        <span className="font-medium">Contacto de emergencia:</span> {patient.contactoEmergencia.nombre} 
+                        ({patient.contactoEmergencia.relacion}) - {patient.contactoEmergencia.telefono}
                       </div>
                     </div>
                     
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => handleEdit(patient, 'patient')}
+                        onClick={() => handleEditPatient(patient)}
                         className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                         title="Editar paciente"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(patient._id, 'patient')}
+                        onClick={() => handleDeletePatient(patient._id)}
                         className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
                         title="Eliminar paciente"
                       >
@@ -620,8 +706,8 @@ const RecepcionDashboard: React.FC = () => {
               )) : (
                 <div className="p-12 text-center text-gray-500">
                   <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No hay pacientes</h3>
-                  <p className="text-gray-600">Comience agregando un nuevo paciente</p>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No hay pacientes registrados</h3>
+                  <p className="text-gray-600">Los pacientes aparecerán aquí una vez registrados</p>
                 </div>
               )}
             </div>
@@ -631,286 +717,86 @@ const RecepcionDashboard: React.FC = () => {
         {activeTab === 'citas' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Gestión de Citas Médicas</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Lista de Citas</h2>
             </div>
             
             <div className="divide-y divide-gray-200">
-              {filteredAppointments.length > 0 ? filteredAppointments.map((appointment) => (
-                <div key={appointment._id} className="p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {appointment.pacienteId.nombre} {appointment.pacienteId.apellido}
-                        </h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(appointment.estado)}`}>
-                          {appointment.estado.replace('_', ' ').toUpperCase()}
-                        </span>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm text-gray-600 mb-3">
-                        <div className="flex items-center space-x-2">
-                          <Calendar className="w-4 h-4" />
-                          <span>{new Date(appointment.fecha).toLocaleDateString('es-ES')}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Clock className="w-4 h-4" />
-                          <span>{appointment.hora}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Stethoscope className="w-4 h-4" />
-                          <span>{appointment?.medicoId?.name}</span>
-
-                        </div>
-                      </div>
-                      
-                      <p className="text-gray-700 mb-2">{appointment.motivo}</p>
-                      {appointment.notas && (
-                        <p className="text-sm text-gray-600 italic">Notas: {appointment.notas}</p>
-                      )}
-                      {appointment.copago && appointment.copago > 0 && (
-                        <div className="mt-2 flex items-center space-x-2">
-                          <span className="text-sm font-medium text-gray-700">Copago:</span>
-                          <span className="text-sm text-green-600 font-semibold">
-                            ${appointment.copago.toLocaleString()}
-                          </span>
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            appointment.pagoCopago 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {appointment.pagoCopago ? 'PAGADO' : 'PENDIENTE'}
+              {filteredAppointments.length > 0 ? filteredAppointments.map((appointment) => {
+                const patient = typeof appointment.pacienteId === 'object' ? appointment.pacienteId : null;
+                const doctor = doctors.find(d => d.userId === appointment.medicoId);
+                
+                if (!patient) return null;
+                
+                return (
+                  <div key={appointment._id} className="p-6 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {patient.nombre} {patient.apellido}
+                          </h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(appointment.estado)}`}>
+                            {appointment.estado.replace('_', ' ').toUpperCase()}
                           </span>
                         </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEdit(appointment, 'appointment')}
-                        className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                        title="Editar cita"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(appointment._id, 'appointment')}
-                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                        title="Eliminar cita"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
+                          <div className="flex items-center space-x-2">
+                            <Calendar className="w-4 h-4" />
+                            <span>{new Date(appointment.fecha).toLocaleDateString('es-ES')}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Clock className="w-4 h-4" />
+                            <span>{appointment.hora}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Stethoscope className="w-4 h-4" />
+                            <span>Dr. {doctor?.nombre} {doctor?.apellido}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <User className="w-4 h-4" />
+                            <span>C.I: {patient.cedula}</span>
+                          </div>
+                        </div>
+                        
+                        <p className="text-gray-700 mb-2">
+                          <span className="font-medium">Motivo:</span> {appointment.motivo}
+                        </p>
+                        
+                        {appointment.notas && (
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">Notas:</span> {appointment.notas}
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleDeleteAppointment(appointment._id!)}
+                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                          title="Eliminar cita"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )) : (
+                );
+              }) : (
                 <div className="p-12 text-center text-gray-500">
                   <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No hay citas programadas</h3>
-                  <p className="text-gray-600">Las citas aparecerán aquí</p>
+                  <p className="text-gray-600">Las citas aparecerán aquí una vez programadas</p>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {activeTab === 'nueva-cita' && (
+        {activeTab === 'nuevo-paciente' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Programar Nueva Cita</h2>
-            </div>
-            
-            <form onSubmit={handleCreateAppointment} className="p-6 space-y-6">
-              {/* Búsqueda de paciente por cédula */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Buscar Paciente por Cédula *
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={searchCedula}
-                    onChange={(e) => setSearchCedula(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="Ingrese número de cédula"
-                  />
-                  <button
-                    type="button"
-                    onClick={searchPatientByCedula}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Search className="w-4 h-4" />
-                  </button>
-                </div>
-                
-                {selectedPatientForAppointment && (
-                  <div className="mt-3 p-3 bg-green-50 rounded-lg">
-                    <p className="text-sm font-medium text-green-800">
-                      Paciente encontrado: {selectedPatientForAppointment.nombre} {selectedPatientForAppointment.apellido}
-                    </p>
-                    <p className="text-xs text-green-600">
-                      {selectedPatientForAppointment.tipoAfiliacion === 'contributivo' ? 
-                        `Contributivo - EPS: ${selectedPatientForAppointment.eps || 'No especificada'}` : 
-                        'Subsidiado'
-                      }
-                    </p>
-                  </div>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Médico *
-                  </label>
-                  <select
-                    required
-                    value={newAppointment.medicoId}
-                    onChange={(e) => {
-                      setNewAppointment({ ...newAppointment, medicoId: e.target.value });
-                      getAvailableDates(e.target.value);
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value="">Seleccionar médico</option>
-                    {doctors.filter(d => d.isActive).map(doctor => (
-                      <option key={doctor._id} value={doctor._id}>
-                        Dr. {doctor.nombre} {doctor.apellido} - {doctor.especialidad} (Consultorio {doctor.consultorio.numero})
-                      </option>
-                    ))}
-                  </select>
-
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Fecha *
-                  </label>
-                  <select
-                    required
-                    value={newAppointment.fecha}
-                    onChange={(e) => {
-                      setNewAppointment({...newAppointment, fecha: e.target.value});
-                      getAvailableTimes(newAppointment.medicoId, e.target.value);
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value="">Seleccionar fecha</option>
-                    {availableDates.map(date => (
-                      <option key={date} value={date}>
-                        {new Date(date).toLocaleDateString('es-ES', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Hora *
-                  </label>
-                  <select
-                    required
-                    value={newAppointment.hora}
-                    onChange={(e) => setNewAppointment({...newAppointment, hora: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value="">Seleccionar hora</option>
-                    {availableTimes.map(time => (
-                      <option key={time} value={time}>
-                        {time}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Motivo de la Consulta *
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  value={newAppointment.motivo}
-                  onChange={(e) => setNewAppointment({...newAppointment, motivo: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="Describa el motivo de la consulta"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notas Adicionales
-                </label>
-                <textarea
-                  rows={2}
-                  value={newAppointment.notas}
-                  onChange={(e) => setNewAppointment({...newAppointment, notas: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="Notas adicionales (opcional)"
-                />
-              </div>
-              
-              {/* Información de copago */}
-              {selectedPatientForAppointment?.tipoAfiliacion === 'contributivo' && (
-                <div className="bg-yellow-50 p-4 rounded-lg">
-                  <h3 className="text-sm font-medium text-yellow-800 mb-2">Información de Copago</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-yellow-700 mb-1">
-                        Valor del Copago
-                      </label>
-                      <input
-                        type="number"
-                        value={newAppointment.copago}
-                        onChange={(e) => setNewAppointment({...newAppointment, copago: parseInt(e.target.value)})}
-                        className="w-full px-3 py-2 border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                        placeholder="15000"
-                      />
-                    </div>
-                    <div className="flex items-center">
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={newAppointment.pagoCopago}
-                          onChange={(e) => setNewAppointment({...newAppointment, pagoCopago: e.target.checked})}
-                          className="rounded border-yellow-300 text-yellow-600 focus:ring-yellow-500"
-                        />
-                        <span className="text-sm text-yellow-700">Copago pagado</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={!selectedPatientForAppointment}
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <CalendarPlus className="w-4 h-4" />
-                  <span>Programar Cita</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-      </div>
-
-      {/* Patient Modal */}
-      {showPatientModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Nuevo Paciente</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Registrar Nuevo Paciente</h2>
             </div>
             
             <form onSubmit={handleCreatePatient} className="p-6 space-y-6">
@@ -986,43 +872,15 @@ const RecepcionDashboard: React.FC = () => {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tipo de Afiliación *
+                    Email
                   </label>
-                  <select
-                    required
-                    value={newPatient.tipoAfiliacion}
-                    onChange={(e) => setNewPatient({...newPatient, tipoAfiliacion: e.target.value as 'contributivo' | 'subsidiado'})}
+                  <input
+                    type="email"
+                    value={newPatient.email}
+                    onChange={(e) => setNewPatient({...newPatient, email: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value="contributivo">Contributivo</option>
-                    <option value="subsidiado">Subsidiado</option>
-                  </select>
+                  />
                 </div>
-                
-                {newPatient.tipoAfiliacion === 'contributivo' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      EPS *
-                    </label>
-                    <select
-                      required
-                      value={newPatient.eps}
-                      onChange={(e) => setNewPatient({...newPatient, eps: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    >
-                      <option value="">Seleccionar EPS</option>
-                      <option value="Sura">Sura</option>
-                      <option value="Sanitas">Sanitas</option>
-                      <option value="Compensar">Compensar</option>
-                      <option value="Famisanar">Famisanar</option>
-                      <option value="Nueva EPS">Nueva EPS</option>
-                      <option value="Salud Total">Salud Total</option>
-                      <option value="Coomeva">Coomeva</option>
-                      <option value="Medimás">Medimás</option>
-                      <option value="Otra">Otra</option>
-                    </select>
-                  </div>
-                )}
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1040,18 +898,21 @@ const RecepcionDashboard: React.FC = () => {
                     <option value="F">Femenino</option>
                   </select>
                 </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={newPatient.email}
-                  onChange={(e) => setNewPatient({...newPatient, email: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tipo de Afiliación *
+                  </label>
+                  <select
+                    required
+                    value={newPatient.tipoAfiliacion}
+                    onChange={(e) => setNewPatient({...newPatient, tipoAfiliacion: e.target.value as 'contributivo' | 'subsidiado'})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="contributivo">Contributivo</option>
+                    <option value="subsidiado">Subsidiado</option>
+                  </select>
+                </div>
               </div>
               
               <div>
@@ -1060,7 +921,7 @@ const RecepcionDashboard: React.FC = () => {
                 </label>
                 <textarea
                   required
-                  rows={2}
+                  rows={3}
                   value={newPatient.direccion}
                   onChange={(e) => setNewPatient({...newPatient, direccion: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
@@ -1078,13 +939,10 @@ const RecepcionDashboard: React.FC = () => {
                     <input
                       type="text"
                       required
-                      value={newPatient.contactoEmergencia?.nombre}
+                      value={newPatient.contactoEmergencia.nombre}
                       onChange={(e) => setNewPatient({
                         ...newPatient,
-                        contactoEmergencia: {
-                          ...newPatient.contactoEmergencia!,
-                          nombre: e.target.value
-                        }
+                        contactoEmergencia: {...newPatient.contactoEmergencia, nombre: e.target.value}
                       })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     />
@@ -1097,13 +955,10 @@ const RecepcionDashboard: React.FC = () => {
                     <input
                       type="tel"
                       required
-                      value={newPatient.contactoEmergencia?.telefono}
+                      value={newPatient.contactoEmergencia.telefono}
                       onChange={(e) => setNewPatient({
                         ...newPatient,
-                        contactoEmergencia: {
-                          ...newPatient.contactoEmergencia!,
-                          telefono: e.target.value
-                        }
+                        contactoEmergencia: {...newPatient.contactoEmergencia, telefono: e.target.value}
                       })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     />
@@ -1116,202 +971,277 @@ const RecepcionDashboard: React.FC = () => {
                     <input
                       type="text"
                       required
-                      value={newPatient.contactoEmergencia?.relacion}
+                      value={newPatient.contactoEmergencia.relacion}
                       onChange={(e) => setNewPatient({
                         ...newPatient,
-                        contactoEmergencia: {
-                          ...newPatient.contactoEmergencia!,
-                          relacion: e.target.value
-                        }
+                        contactoEmergencia: {...newPatient.contactoEmergencia, relacion: e.target.value}
                       })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Ej: Madre, Esposo, Hermano"
                     />
                   </div>
                 </div>
               </div>
               
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowPatientModal(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Cancelar
-                </button>
+              <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
                 >
-                  Crear Paciente
+                  <Plus className="w-4 h-4" />
+                  <span>Registrar Paciente</span>
                 </button>
               </div>
             </form>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Edit Modal */}
-      {showEditModal && selectedItem && (
+        {activeTab === 'nueva-cita' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Programar Nueva Cita</h2>
+            </div>
+            
+            <form onSubmit={handleCreateAppointment} className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Paciente *
+                  </label>
+                  <select
+                    required
+                    value={newAppointment.pacienteId}
+                    onChange={(e) => setNewAppointment({...newAppointment, pacienteId: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="">Seleccionar paciente</option>
+                    {patients.map((patient) => (
+                      <option key={patient._id} value={patient._id}>
+                        {patient.nombre} {patient.apellido} - {patient.cedula}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Doctor *
+                  </label>
+                  <select
+                    required
+                    value={selectedDoctorId}
+                    onChange={(e) => setSelectedDoctorId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="">Seleccionar doctor</option>
+                    {doctors.filter(d => d.isActive).map((doctor) => (
+                      <option key={doctor._id} value={doctor._id}>
+                        Dr. {doctor.nombre} {doctor.apellido} - {doctor.especialidad}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Fecha *
+                  </label>
+                  <select
+                    required
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    disabled={!selectedDoctorId}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {selectedDoctorId ? 'Seleccionar fecha' : 'Primero seleccione un doctor'}
+                    </option>
+                    {availableDates.map((date) => (
+                      <option key={date} value={date}>
+                        {new Date(date).toLocaleDateString('es-ES', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedDoctorId && availableDates.length === 0 && (
+                    <p className="text-sm text-red-600 mt-1">
+                      El doctor seleccionado no tiene horarios disponibles
+                    </p>
+                  )}
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Hora *
+                  </label>
+                  <select
+                    required
+                    value={newAppointment.hora}
+                    onChange={(e) => setNewAppointment({...newAppointment, hora: e.target.value})}
+                    disabled={!selectedDate}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {selectedDate ? 'Seleccionar hora' : 'Primero seleccione una fecha'}
+                    </option>
+                    {availableHours.map((hour) => (
+                      <option key={hour} value={hour}>
+                        {hour}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedDate && availableHours.length === 0 && (
+                    <p className="text-sm text-red-600 mt-1">
+                      No hay horarios disponibles para esta fecha
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Mostrar información del horario del doctor */}
+              {doctorSchedule && doctorSchedule.disponible && (
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-blue-900 mb-2">Información del Horario</h4>
+                  <div className="text-sm text-blue-800">
+                    <p>Horario de atención: {doctorSchedule.horario.horaInicio} - {doctorSchedule.horario.horaFin}</p>
+                    {doctorSchedule.horasOcupadas && doctorSchedule.horasOcupadas.length > 0 && (
+                      <p>Horas ocupadas: {doctorSchedule.horasOcupadas.join(', ')}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Motivo de la Consulta *
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={newAppointment.motivo}
+                  onChange={(e) => setNewAppointment({...newAppointment, motivo: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Describa el motivo de la consulta"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Notas Adicionales
+                </label>
+                <textarea
+                  rows={2}
+                  value={newAppointment.notas}
+                  onChange={(e) => setNewAppointment({...newAppointment, notas: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Notas adicionales (opcional)"
+                />
+              </div>
+              
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={!selectedDoctorId || !selectedDate || !newAppointment.hora}
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Calendar className="w-4 h-4" />
+                  <span>Programar Cita</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+
+      {/* Edit Patient Modal */}
+      {showEditModal && selectedPatient && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Editar {editType === 'patient' ? 'Paciente' : 'Cita'}
-              </h2>
+              <h2 className="text-xl font-semibold text-gray-900">Editar Paciente</h2>
             </div>
             
-            <form onSubmit={handleUpdate} className="p-6 space-y-6">
-              {editType === 'patient' ? (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nombre *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={selectedItem.nombre}
-                        onChange={(e) => setSelectedItem({...selectedItem, nombre: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Apellido *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={selectedItem.apellido}
-                        onChange={(e) => setSelectedItem({...selectedItem, apellido: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Teléfono *
-                      </label>
-                      <input
-                        type="tel"
-                        required
-                        value={selectedItem.telefono}
-                        onChange={(e) => setSelectedItem({...selectedItem, telefono: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        value={selectedItem.email || ''}
-                        onChange={(e) => setSelectedItem({...selectedItem, email: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Dirección *
-                    </label>
-                    <textarea
-                      required
-                      rows={2}
-                      value={selectedItem.direccion}
-                      onChange={(e) => setSelectedItem({...selectedItem, direccion: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Fecha *
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={selectedItem.fecha}
-                        onChange={(e) => setSelectedItem({...selectedItem, fecha: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Hora *
-                      </label>
-                      <input
-                        type="time"
-                        required
-                        value={selectedItem.hora}
-                        onChange={(e) => setSelectedItem({...selectedItem, hora: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Estado
-                    </label>
-                    <select
-                      value={selectedItem.estado}
-                      onChange={(e) => setSelectedItem({...selectedItem, estado: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    >
-                      <option value="programada">Programada</option>
-                      <option value="confirmada">Confirmada</option>
-                      <option value="en_curso">En Curso</option>
-                      <option value="completada">Completada</option>
-                      <option value="cancelada">Cancelada</option>
-                      <option value="no_asistio">No Asistió</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Motivo *
-                    </label>
-                    <textarea
-                      required
-                      rows={3}
-                      value={selectedItem.motivo}
-                      onChange={(e) => setSelectedItem({...selectedItem, motivo: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Notas
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={selectedItem.notas || ''}
-                      onChange={(e) => setSelectedItem({...selectedItem, notas: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    />
-                  </div>
-                </>
-              )}
+            <form onSubmit={handleUpdatePatient} className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nombre *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={selectedPatient.nombre}
+                    onChange={(e) => setSelectedPatient({...selectedPatient, nombre: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Apellido *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={selectedPatient.apellido}
+                    onChange={(e) => setSelectedPatient({...selectedPatient, apellido: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Teléfono *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={selectedPatient.telefono}
+                    onChange={(e) => setSelectedPatient({...selectedPatient, telefono: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={selectedPatient.email || ''}
+                    onChange={(e) => setSelectedPatient({...selectedPatient, email: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Dirección *
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={selectedPatient.direccion}
+                  onChange={(e) => setSelectedPatient({...selectedPatient, direccion: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+              </div>
               
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"
                   onClick={() => {
                     setShowEditModal(false);
-                    setSelectedItem(null);
+                    setSelectedPatient(null);
                   }}
                   className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                 >

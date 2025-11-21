@@ -1,6 +1,5 @@
 import axios from 'axios';
-// Importar las APIs en el hook
-import { especialidadesAPI, consultoriosAPI } from '../services/api';
+
 // Detectar automáticamente la URL base
 const getBaseURL = () => {
   if (typeof window !== 'undefined') {
