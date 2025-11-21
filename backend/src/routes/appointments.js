@@ -125,6 +125,7 @@ router.get('/my-appointments', authMiddleware, async (req, res) => {
 // Get appointments
 router.get('/', authMiddleware, async (req, res) => {
   try {
+    console.log('Fetching all appointments with filters:', req.query);
     const { fecha, estado, pacienteId, medicoId } = req.query;
     let filter = {};
 
@@ -149,12 +150,10 @@ router.get('/', authMiddleware, async (req, res) => {
 
     const appointments = await Appointment.find(filter)
       .populate('pacienteId', 'nombre apellido cedula telefono')
-      .populate({
-        path: 'medicoId',
-        select: 'name'
-      })
+      .populate('medicoId', 'name')
       .sort({ fecha: 1, hora: 1 });
 
+    console.log(`Found ${appointments.length} total appointments`);
     res.json(appointments);
   } catch (error) {
     console.error('Error fetching appointments:', error);
