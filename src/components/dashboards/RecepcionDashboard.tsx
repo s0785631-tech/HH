@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+
 import { automation } from '../../services/automationService';
 import { Users, Calendar, Clock, UserPlus, CalendarPlus, Search, CreditCard as Edit, Trash2, Eye, Phone, Mail, MapPin, User, CheckCircle, XCircle, AlertTriangle, Stethoscope } from 'lucide-react';
 import { useAPI } from '../../hooks/useAPI';
@@ -656,7 +659,8 @@ const RecepcionDashboard: React.FC = () => {
                         </div>
                         <div className="flex items-center space-x-2">
                           <Stethoscope className="w-4 h-4" />
-                          <span>{appointment.medicoId.name}</span>
+                          <span>{appointment?.medicoId?.name}</span>
+
                         </div>
                       </div>
                       
@@ -763,18 +767,19 @@ const RecepcionDashboard: React.FC = () => {
                     required
                     value={newAppointment.medicoId}
                     onChange={(e) => {
-                      setNewAppointment({...newAppointment, medicoId: e.target.value});
+                      setNewAppointment({ ...newAppointment, medicoId: e.target.value });
                       getAvailableDates(e.target.value);
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   >
                     <option value="">Seleccionar médico</option>
                     {doctors.filter(d => d.isActive).map(doctor => (
-                      <option key={doctor._id} value={doctor.userId}>
+                      <option key={doctor._id} value={doctor._id}>
                         Dr. {doctor.nombre} {doctor.apellido} - {doctor.especialidad} (Consultorio {doctor.consultorio.numero})
                       </option>
                     ))}
                   </select>
+
                 </div>
               </div>
               
