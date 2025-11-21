@@ -57,6 +57,8 @@ const EnfermeriaDashboard: React.FC = () => {
   const [searchPatientId, setSearchPatientId] = useState('');
   const [selectedPatientForTriage, setSelectedPatientForTriage] = useState<Patient | null>(null);
   const [filteredTriages, setFilteredTriages] = useState<TriageData[]>([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [selectedDoctor, setSelectedDoctor] = useState<string>('');
 
   // Estados para formulario de triaje
   const [newTriage, setNewTriage] = useState<TriageData>({
@@ -79,6 +81,7 @@ const EnfermeriaDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+    fetchDoctors();
     
     // Escuchar acciones del menú
     const handleMenuAction = (event: any) => {
@@ -113,6 +116,16 @@ const EnfermeriaDashboard: React.FC = () => {
     });
     setFilteredTriages(filtered);
   }, [searchTerm, triages]);
+
+  const fetchDoctors = async () => {
+    try {
+      const data = await api.doctors.getAll();
+      setDoctors(data || []);
+    } catch (error) {
+      console.error('Error fetching doctors:', error);
+      setDoctors([]);
+    }
+  };
 
   // Buscar paciente por ID/Cédula
   const searchPatientById = async () => {
@@ -201,14 +214,32 @@ const EnfermeriaDashboard: React.FC = () => {
     try {
       const triageData = {
         ...newTriage,
-        fechaHora: new Date().toISOString()
+        fechaHora: new Date().toISOString(),
+        medicoAsignado: selectedDoctor
       };
       
       const createdTriage = await api.triage.create(triageData);
       
+      // Si se seleccionó un doctor, crear asignación automática
+      if (selectedDoctor && selectedPatientForTriage) {
+        try {
+          await api.patientAssignments.create({
+            pacienteId: selectedPatientForTriage._id,
+            medicoId: selectedDoctor,
+            motivoConsulta: newTriage.sintomas,
+            prioridad: newTriage.prioridad,
+            triageId: createdTriage._id,
+            observaciones: `Asignación automática desde triaje - Prioridad: ${newTriage.prioridad}`
+          });
+        } catch (assignmentError) {
+          console.error('Error creating patient assignment:', assignmentError);
+        }
+      }
+      
       fetchData();
       setSelectedPatientForTriage(null);
       setSearchPatientId('');
+      setSelectedDoctor('');
       setNewTriage({
         pacienteId: '',
         sintomas: '',
@@ -648,6 +679,25 @@ const EnfermeriaDashboard: React.FC = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Asignar Doctor *
+                </label>
+                <select
+                  required
+                  value={selectedDoctor}
+                  onChange={(e) => setSelectedDoctor(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  <option value="">Seleccione un doctor</option>
+                  {doctors.map((doctor) => (
+                    <option key={doctor._id} value={doctor.userId}>
+                      Dr. {doctor.nombre} {doctor.apellido} - {doctor.especialidad}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Síntomas *
                 </label>
                 <textarea
@@ -793,7 +843,7 @@ const EnfermeriaDashboard: React.FC = () => {
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  disabled={!selectedPatientForTriage}
+                  disabled={!selectedPatientForTriage || !selectedDoctor}
                   className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Plus className="w-4 h-4" />

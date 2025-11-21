@@ -60,50 +60,10 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
     window.addEventListener('system_notification', handleSystemNotification);
 
-    // Cargar notificaciones iniciales (simuladas)
-    loadInitialNotifications();
-
     return () => {
       window.removeEventListener('system_notification', handleSystemNotification);
     };
   }, []);
-
-  const loadInitialNotifications = () => {
-    const initialNotifications: SystemNotification[] = [
-      {
-        id: '1',
-        type: 'system',
-        template: 'appointment_reminder_24h',
-        title: 'Recordatorio de Cita',
-        message: 'Tiene una cita programada para mañana a las 10:00 AM con el Dr. García',
-        priority: 'medium',
-        timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 minutos atrás
-        read: false
-      },
-      {
-        id: '2',
-        type: 'system',
-        template: 'high_priority_triage',
-        title: 'Triaje de Alta Prioridad',
-        message: 'Nuevo paciente con triaje de prioridad ALTA requiere atención inmediata',
-        priority: 'urgent',
-        timestamp: new Date(Date.now() - 15 * 60 * 1000), // 15 minutos atrás
-        read: false
-      },
-      {
-        id: '3',
-        type: 'system',
-        template: 'patient_assigned',
-        title: 'Paciente Asignado',
-        message: 'Se le ha asignado un nuevo paciente: María González',
-        priority: 'medium',
-        timestamp: new Date(Date.now() - 60 * 60 * 1000), // 1 hora atrás
-        read: true
-      }
-    ];
-
-    setNotifications(initialNotifications);
-  };
 
   const getNotificationTitle = (template: string): string => {
     const titles: { [key: string]: string } = {
@@ -137,7 +97,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
     };
     
     const messageFunc = messages[template];
-    return messageFunc ? messageFunc(data) : 'Notificación del sistema de automatización';
+    return messageFunc ? messageFunc(data) : 'Notificación del sistema';
   };
 
   const getNotificationIcon = (template: string, priority: string) => {
@@ -346,7 +306,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
         {/* Footer */}
         <div className="px-6 py-3 border-t border-gray-200 bg-gray-50">
           <div className="flex items-center justify-between text-sm text-gray-600">
-            <span>Sistema de automatización SAVISER activo</span>
+            <span>Sistema SAVISER</span>
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               <span>En línea</span>

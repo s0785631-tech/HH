@@ -34,7 +34,10 @@ const AppointmentSchema = new mongoose.Schema({
   },
   copago: {
     type: Number,
-    default: 0
+    default: function() {
+      // El copago se calculará basado en el tipo de afiliación del paciente
+      return 0; // Se actualizará cuando se cree la cita
+    }
   },
   pagoCopago: {
     type: Boolean,

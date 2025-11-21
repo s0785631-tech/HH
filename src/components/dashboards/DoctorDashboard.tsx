@@ -16,8 +16,6 @@ import {
   Download,
   Printer,
   Eye,
-  Bell,
-  X,
   Plus,
   XCircle
 } from 'lucide-react';
@@ -74,14 +72,6 @@ interface Consultation {
   fechaHora: string;
 }
 
-interface NotificationAlert {
-  id: string;
-  message: string;
-  type: 'assignment' | 'urgent' | 'info';
-  timestamp: Date;
-  read: boolean;
-}
-
 const DoctorDashboard: React.FC = () => {
   const [assignedPatients, setAssignedPatients] = useState<PatientAssignment[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
@@ -91,8 +81,6 @@ const DoctorDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'asignados' | 'consultas' | 'historial'>('asignados');
   
   // Estados para notificaciones
-  const [notifications, setNotifications] = useState<NotificationAlert[]>([]);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -146,13 +134,6 @@ const DoctorDashboard: React.FC = () => {
   useEffect(() => {
     fetchAssignedPatients();
     fetchConsultations();
-    
-    // Simular notificaciones en tiempo real
-    const notificationInterval = setInterval(() => {
-      checkForNewAssignments();
-    }, 30000); // Verificar cada 30 segundos
-
-    return () => clearInterval(notificationInterval);
   }, []);
 
   const fetchAssignedPatients = async () => {
@@ -168,50 +149,7 @@ const DoctorDashboard: React.FC = () => {
         const data = await response.json();
         setAssignedPatients(data);
       } else {
-        // Datos simulados para demostración
-        const mockAssignments: PatientAssignment[] = [
-          {
-            _id: '1',
-            pacienteId: {
-              _id: '1',
-              nombre: 'María',
-              apellido: 'González',
-              cedula: '12345678',
-              fechaNacimiento: '1985-03-15',
-              telefono: '555-0123',
-              genero: 'F',
-              direccion: 'Calle 123 #45-67',
-              email: 'maria.gonzalez@email.com'
-            },
-            medicoId: user.id,
-            motivoConsulta: 'Dolor de cabeza persistente',
-            prioridad: 'media',
-            estado: 'asignado',
-            fechaAsignacion: new Date().toISOString(),
-            observaciones: 'Paciente refiere dolor desde hace 3 días'
-          },
-          {
-            _id: '2',
-            pacienteId: {
-              _id: '2',
-              nombre: 'Carlos',
-              apellido: 'Rodríguez',
-              cedula: '87654321',
-              fechaNacimiento: '1978-07-22',
-              telefono: '555-0456',
-              genero: 'M',
-              direccion: 'Avenida 456 #78-90',
-              email: 'carlos.rodriguez@email.com'
-            },
-            medicoId: user.id,
-            motivoConsulta: 'Control de hipertensión',
-            prioridad: 'alta',
-            estado: 'asignado',
-            fechaAsignacion: new Date().toISOString(),
-            observaciones: 'Paciente hipertenso en tratamiento'
-          }
-        ];
-        setAssignedPatients(mockAssignments);
+        setAssignedPatients([]);
       }
     } catch (error) {
       console.error('Error fetching assigned patients:', error);
@@ -240,43 +178,6 @@ const DoctorDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error fetching consultations:', error);
       setConsultations([]);
-    }
-  };
-
-  const checkForNewAssignments = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const lastCheck = localStorage.getItem('lastAssignmentCheck') || new Date(Date.now() - 5 * 60 * 1000).toISOString();
-      
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/patient-assignments/doctor/new?lastCheck=${lastCheck}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        const newAssignments = await response.json();
-        
-        if (newAssignments.length > 0) {
-          // Agregar notificaciones
-          const newNotifications = newAssignments.map((assignment: PatientAssignment) => ({
-            id: assignment._id,
-            message: `Nuevo paciente asignado: ${assignment.pacienteId.nombre} ${assignment.pacienteId.apellido}`,
-            type: 'assignment' as const,
-            timestamp: new Date(),
-            read: false
-          }));
-          
-          setNotifications(prev => [...newNotifications, ...prev]);
-          
-          // Actualizar lista de pacientes asignados
-          fetchAssignedPatients();
-        }
-        
-        localStorage.setItem('lastAssignmentCheck', new Date().toISOString());
-      }
-    } catch (error) {
-      console.error('Error checking for new assignments:', error);
     }
   };
 
@@ -486,8 +387,6 @@ const DoctorDashboard: React.FC = () => {
     consultas: consultations.length
   };
 
-  const unreadNotifications = notifications.filter(n => !n.read).length;
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -508,55 +407,6 @@ const DoctorDashboard: React.FC = () => {
             <div>
               <h1 className="text-xl font-bold text-teal-900">Dashboard Médico</h1>
               <p className="text-teal-700">Dr. {doctorInfo.nombre} {doctorInfo.apellido} - {doctorInfo.especialidad}</p>
-            </div>
-            
-            {/* Notifications */}
-            <div className="relative">
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 text-teal-600 hover:text-teal-800 hover:bg-teal-100 rounded-lg transition-colors"
-              >
-                <Bell className="w-6 h-6" />
-                {unreadNotifications > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {unreadNotifications}
-                  </span>
-                )}
-              </button>
-              
-              {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto">
-                  <div className="p-4 border-b border-gray-200">
-                    <h3 className="font-semibold text-gray-900">Notificaciones</h3>
-                  </div>
-                  
-                  {notifications.length > 0 ? (
-                    <div className="divide-y divide-gray-100">
-                      {notifications.slice(0, 10).map((notification) => (
-                        <div key={notification.id} className={`p-4 hover:bg-gray-50 ${!notification.read ? 'bg-blue-50' : ''}`}>
-                          <div className="flex items-start space-x-3">
-                            <div className={`w-2 h-2 rounded-full mt-2 ${
-                              notification.type === 'assignment' ? 'bg-blue-500' :
-                              notification.type === 'urgent' ? 'bg-red-500' : 'bg-gray-500'
-                            }`} />
-                            <div className="flex-1">
-                              <p className="text-sm text-gray-900">{notification.message}</p>
-                              <p className="text-xs text-gray-500 mt-1">
-                                {notification.timestamp.toLocaleTimeString('es-ES')}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-8 text-center text-gray-500">
-                      <Bell className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                      <p>No hay notificaciones</p>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         </div>

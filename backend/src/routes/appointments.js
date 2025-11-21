@@ -50,9 +50,19 @@ router.post('/', authMiddleware, async (req, res) => {
     console.log('Creating appointment with data:', req.body);
     console.log('User from token:', req.user);
     
+    // Obtener información del paciente para calcular copago
+    const Patient = require('../models/Patient');
+    const patient = await Patient.findById(req.body.pacienteId);
+    
+    let copago = 0;
+    if (patient && patient.tipoAfiliacion === 'contributivo') {
+      copago = 15000; // Copago obligatorio para régimen contributivo
+    }
+    
     const appointment = new Appointment({
       ...req.body,
-      createdBy: req.user.userId
+      createdBy: req.user.userId,
+      copago: copago
     });
     
     console.log('Appointment to save:', appointment);

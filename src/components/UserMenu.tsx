@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import AutomationPanel from './AutomationPanel';
 import { 
   ChevronDown, 
   User, 
@@ -35,7 +34,6 @@ const UserMenu: React.FC<UserMenuProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
-  const [showAutomationPanel, setShowAutomationPanel] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -85,14 +83,6 @@ const UserMenu: React.FC<UserMenuProps> = ({
               { title: 'Nuevo Doctor', icon: UserPlus, action: () => onMenuAction('nuevo-doctor') },
               { title: 'Gestión de Doctores', icon: Stethoscope, action: () => onMenuAction('gestion-doctores') },
               { title: 'Configuración', icon: Settings, action: () => onMenuAction('configuracion') }
-            ]
-          },
-          {
-            title: 'Automatización',
-            icon: BarChart3,
-            items: [
-              { title: 'Panel de Control', icon: Settings, action: () => setShowAutomationPanel(true) },
-              { title: 'Reglas Activas', icon: CheckCircle, action: () => onMenuAction('reglas-activas') }
             ]
           },
           {
@@ -175,21 +165,6 @@ const UserMenu: React.FC<UserMenuProps> = ({
   return (
     <div className="relative" ref={menuRef}>
       <div className="flex items-center space-x-3">
-        {/* Notification Bell */}
-        {onShowNotifications && (
-          <button
-            onClick={onShowNotifications}
-            className="relative p-2 text-white hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors"
-          >
-            <Bell className="w-5 h-5" />
-            {notificationCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
-                {notificationCount > 99 ? '99+' : notificationCount}
-              </span>
-            )}
-          </button>
-        )}
-        
         {/* User Menu Button */}
         <button
           onClick={() => setIsOpen(!isOpen)}
@@ -228,15 +203,6 @@ const UserMenu: React.FC<UserMenuProps> = ({
           </div>
 
           {/* Automation Status */}
-          <div className="px-4 py-3 bg-green-50 border-b border-gray-200">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-green-700 font-medium">Sistema Automatizado Activo</span>
-            </div>
-            <p className="text-xs text-green-600 mt-1">
-              Recordatorios, asignaciones y notificaciones automáticas habilitadas
-            </p>
-          </div>
 
           {/* Menu Items */}
           <div className="py-2">
@@ -371,11 +337,6 @@ const UserMenu: React.FC<UserMenuProps> = ({
         </div>
       )}
       
-      {/* Panel de Automatización */}
-      <AutomationPanel
-        isOpen={showAutomationPanel}
-        onClose={() => setShowAutomationPanel(false)}
-      />
 
       <style jsx>{`
         @keyframes dropdown {

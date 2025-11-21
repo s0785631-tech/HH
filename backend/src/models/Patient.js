@@ -39,8 +39,7 @@ const PatientSchema = new mongoose.Schema({
   tipoAfiliacion: {
     type: String,
     required: true,
-    enum: ['contributivo', 'subsidiado'],
-    default: 'contributivo'
+    enum: ['contributivo', 'subsidiado']
   },
   eps: {
     type: String
@@ -68,6 +67,12 @@ const PatientSchema = new mongoose.Schema({
   seguroMedico: {
     compania: String,
     numeroPoliza: String
+  },
+  copago: {
+    type: Number,
+    default: function() {
+      return this.tipoAfiliacion === 'contributivo' ? 15000 : 0;
+    }
   },
   isActive: {
     type: Boolean,
