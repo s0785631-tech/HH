@@ -43,6 +43,14 @@ const AppointmentSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  fechaPago: {
+    type: Date
+  },
+  metodoPago: {
+    type: String,
+    enum: ['efectivo', 'tarjeta', 'transferencia'],
+    default: 'efectivo'
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

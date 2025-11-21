@@ -62,6 +62,79 @@ router.get('/available/:fecha/:hora', authMiddleware, async (req, res) => {
   }
 });
 
+// Validar contraseña fuerte para doctores
+const validatePassword = (password) => {
+  const minLength = 8;
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumbers = /\d/.test(password);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  
+  const errors = [];
+  
+  if (password.length < minLength) {
+    errors.push(`La contraseña debe tener al menos ${minLength} caracteres`);
+  }
+  if (!hasUpperCase) {
+    errors.push('La contraseña debe contener al menos una letra mayúscula');
+  }
+  if (!hasLowerCase) {
+    errors.push('La contraseña debe contener al menos una letra minúscula');
+  }
+  if (!hasNumbers) {
+    errors.push('La contraseña debe contener al menos un número');
+  }
+  if (!hasSpecialChar) {
+    errors.push('La contraseña debe contener al menos un carácter especial (!@#$%^&*(),.?":{}|<>)');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors: errors
+  };
+};
+
+// Validar horarios del doctor
+const validateDoctorSchedule = (horarios) => {
+  const errors = [];
+  
+  if (!horarios || horarios.length === 0) {
+    errors.push('Debe definir al menos un horario de trabajo');
+    return { isValid: false, errors };
+  }
+  
+  const diasValidos = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+  
+  horarios.forEach((horario, index) => {
+    if (!diasValidos.includes(horario.dia)) {
+      errors.push(`Día inválido en horario ${index + 1}: ${horario.dia}`);
+    }
+    
+    if (!horario.horaInicio || !horario.horaFin) {
+      errors.push(`Horario ${index + 1}: Debe especificar hora de inicio y fin`);
+    } else {
+      // Validar formato de hora (HH:MM)
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(horario.horaInicio)) {
+        errors.push(`Horario ${index + 1}: Formato de hora de inicio inválido (use HH:MM)`);
+      }
+      if (!timeRegex.test(horario.horaFin)) {
+        errors.push(`Horario ${index + 1}: Formato de hora de fin inválido (use HH:MM)`);
+      }
+      
+      // Validar que hora fin sea mayor que hora inicio
+      if (horario.horaInicio >= horario.horaFin) {
+        errors.push(`Horario ${index + 1}: La hora de fin debe ser mayor que la hora de inicio`);
+      }
+    }
+  });
+  
+  return {
+    isValid: errors.length === 0,
+    errors: errors
+  };
+};
+
 // Create doctor (only empresa role)
 router.post('/', authMiddleware, async (req, res) => {
   try {
@@ -95,6 +168,24 @@ router.post('/', authMiddleware, async (req, res) => {
     if (!nombre || !apellido || !cedula || !especialidad || !numeroLicencia || !telefono || !email || !password) {
       console.log('Missing required fields');
       return res.status(400).json({ message: 'Todos los campos son requeridos' });
+    }
+
+    // Validar contraseña fuerte
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({ 
+        message: 'Contraseña no cumple con los requisitos de seguridad',
+        errors: passwordValidation.errors
+      });
+    }
+
+    // Validar horarios
+    const scheduleValidation = validateDoctorSchedule(horarios);
+    if (!scheduleValidation.isValid) {
+      return res.status(400).json({ 
+        message: 'Horarios inválidos',
+        errors: scheduleValidation.errors
+      });
     }
 
     // Verificar si ya existe un doctor con la misma cédula
@@ -136,7 +227,7 @@ router.post('/', authMiddleware, async (req, res) => {
       telefono,
       email,
       consultorio,
-      horarios: horarios || []
+      horarios: horarios
     });
     
     const savedDoctor = await doctor.save();

@@ -149,12 +149,55 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Validar contraseña fuerte
+const validatePassword = (password) => {
+  const minLength = 8;
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumbers = /\d/.test(password);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  
+  const errors = [];
+  
+  if (password.length < minLength) {
+    errors.push(`La contraseña debe tener al menos ${minLength} caracteres`);
+  }
+  if (!hasUpperCase) {
+    errors.push('La contraseña debe contener al menos una letra mayúscula');
+  }
+  if (!hasLowerCase) {
+    errors.push('La contraseña debe contener al menos una letra minúscula');
+  }
+  if (!hasNumbers) {
+    errors.push('La contraseña debe contener al menos un número');
+  }
+  if (!hasSpecialChar) {
+    errors.push('La contraseña debe contener al menos un carácter especial (!@#$%^&*(),.?":{}|<>)');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors: errors
+  };
+};
+
 // Register
 router.post('/register', async (req, res) => {
   try {
     const { name, email, cedula, password, role } = req.body;
 
     console.log('Register attempt:', { name, email, cedula, role });
+
+    // Validar contraseña fuerte solo para rol empresa
+    if (role === 'empresa') {
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({ 
+          message: 'Contraseña no cumple con los requisitos de seguridad',
+          errors: passwordValidation.errors
+        });
+      }
+    }
 
     const existingUser = await User.findOne({ 
       $or: [{ email }, { cedula }]

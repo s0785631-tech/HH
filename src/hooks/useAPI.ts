@@ -53,9 +53,12 @@ export const useAPI = () => {
 
     appointments: {
       getAll: (params?: any) => handleRequest(() => appointmentsAPI.getAll(params)),
+      getMyAppointments: (params?: any) => handleRequest(() => appointmentsAPI.getMyAppointments(params)),
+      getDoctorAppointments: (doctorId: string, params?: any) => handleRequest(() => appointmentsAPI.getDoctorAppointments(doctorId, params)),
       getById: (id: string) => handleRequest(() => appointmentsAPI.getById(id)),
       create: (data: any) => handleRequest(() => appointmentsAPI.create(data)),
       update: (id: string, data: any) => handleRequest(() => appointmentsAPI.update(id, data)),
+      updatePayment: (id: string, data: any) => handleRequest(() => appointmentsAPI.updatePayment(id, data)),
       delete: (id: string) => handleRequest(() => appointmentsAPI.delete(id)),
     },
 
